@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        td {
+            border: 1px solid blue;
+        }
+    </style>
+</head>
+<body>
+
+    {% for appo in appointments %}
+    <h1>{{appo.id}}</h1>
+    <h2>{{appo.time_start}}</h2>
+    {% endfor %}
+
+    <form action="/user/{{userId}}" method="POST">
+        {{ dateform.hidden_tag() }}
+        {{dateform.start_date.label}}
+        {{ dateform.start_date() }}
+        {{ dateform.submit()}}
+    
+    
+
+
+    <table>
+        <tr>
+            <td>Heure</td>
+            {% for day in weekdays %}
+                <td>{{day[0]}}</td>
+                            
+                            
+                            
+            {% endfor %}
+
+            
+
+        </tr>
+
+        {% for time in times %}
+
+        <tr>
+            
+           <td> {{time.strftime("%H:%M")}}</td>
+           {% for day in weekdays %}
+                {% for app in appointments %}
+
+                    {% if app.time_start.date() == day[1].date() and app.time_start.time() == time.time()  %}
+                        
+                         <td>{{ app.title}} <br>
+                             Date:{{ app.time_start.day }}/{{app.time_start.month}}/{{app.time_start.year}} <br>
+                            Heure: {{app.time_start.time()}} - {{app.time_end.time()}}
+                {% else %}
+                    <td> <a href="/appointment/{{day[1].date()}}/{{time.time()}}/{{userId}}">Prendre rendez-vous</a></td>
+            
+                    {% endif %}
+                {% endfor %}
+           {% endfor %}
+
+        </tr>
+            {% endfor %}
+
+   
+
+        
+
+        
+    </table>
+    
+</body>
+</html>
