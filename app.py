@@ -92,7 +92,7 @@ def getWeekdays(firstDay):
     weekdays = []
     for i in range(7):
         currentDay = firstDay + timedelta(days=(i))
-        print(currentDay.strftime('%A'))
+        print(currentDay.strftime('%A'), str(currentDay))
         weekdays.append([currentDay.strftime('%A'), currentDay])
     return weekdays
 
@@ -126,25 +126,32 @@ def get_user_calender(id):
     dateform = DateSelection()
 
     if dateform.validate_on_submit():
-        SelectedDate = dateform.start_date.data
+        ###SelectedDate = dateform.start_date.data
+        SelectedDate = datetime(
+            dateform.start_date.data.year, dateform.start_date.data.month, dateform.start_date.data.day, 2, 2, 00)
+        print("selected date "+str(SelectedDate))
     else:
         SelectedDate = datetime.today()
+        print("selected date "+str(SelectedDate))
     weekdays = getWeekdays(SelectedDate)
+    print(weekdays)
     times = get_times(datetime(2020, 1, 1, 00, 00, 00), 30)
     time_start_plus_7 = SelectedDate + timedelta(days=7)
     appointments = Appointment.query.filter(
         Appointment.creatorId == id, Appointment.time_start >= SelectedDate, Appointment.time_end < time_start_plus_7).all()
+    print(appointments)
 
     return render_template('calendar.html', appointments=appointments, dateform=dateform, userId=id, weekdays=weekdays, times=times)
 
 
-@app.route('/appointment/<date>/<time>/<id>', methods=['GET', 'POST'])
+@ app.route('/appointment/<date>/<time>/<id>', methods=['GET', 'POST'])
 @ login_required
 def make_appointment(date, time, id):
     titleForm = AppointmentTitle()
     if titleForm.validate_on_submit():
         new_appointment = Appointment(time_start=datetime(year=date.year(), month=date.month(), day=date.day(), hour=time.hour(
         ), minute=time.minute()), time_end=(datetime(year=date.year(), month=date.month(), day=date.day(), hour=time.hour(), minute=time.minute())+timedelta(minutes=30)), title=titleForm.title.data, creatorId=id)
+    else:
         return redirect('/appointment/'+date+'/'+time+'/'+'/'+id)
 
     return render_template('confirmation.html', titleForm=titleForm, date=date, time=time, id=id)

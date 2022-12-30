@@ -1,3 +1,4 @@
+{% set foundAppointment = namespace(found=False) %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -46,19 +47,38 @@
         <tr>
             
            <td> {{time.strftime("%H:%M")}}</td>
+       
            {% for day in weekdays %}
-                {% for app in appointments %}
-
-                    {% if app.time_start.date() == day[1].date() and app.time_start.time() == time.time()  %}
-                        
-                         <td>{{ app.title}} <br>
-                             Date:{{ app.time_start.day }}/{{app.time_start.month}}/{{app.time_start.year}} <br>
-                            Heure: {{app.time_start.time()}} - {{app.time_end.time()}}
-                {% else %}
-                    <td> <a href="/appointment/{{day[1].date()}}/{{time.time()}}/{{userId}}">Prendre rendez-vous</a></td>
             
+                {% if appointments == [] %}
+                    <td> <a href="/appointment/{{day[1].date()}}/{{time.time()}}/{{userId}}">Prendre rendez-vous test</a></td>
+                {% else %}
+                
+           
+                    {% for app in appointments %}
+
+                        {% if app.time_start.date() == day[1].date() and app.time_start.time() == time.time()  %}
+                            {% set foundAppointment.found = True %}
+                            <td>{{ app.title}} <br>
+                                Date:{{ app.time_start.day }}/{{app.time_start.month}}/{{app.time_start.year}} <br>
+                                Heure: {{app.time_start.time()}} - {{app.time_end.time()}} </td>
+
+                        
+                    
+                
+                        {% endif %}
+                  
+                        
+                        
+                    {% endfor %}
+               
+                    {% if not foundAppointment.found %}
+                    <td> <a href="/appointment/{{day[1].date()}}/{{time.time()}}/{{userId}}">testst</a></td>
+                    
                     {% endif %}
-                {% endfor %}
+                    {% set foundAppointment.found=False %}
+
+                {% endif %}
            {% endfor %}
 
         </tr>
