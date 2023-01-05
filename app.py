@@ -93,6 +93,21 @@ class AppointmentTitle(FlaskForm):
     submit = SubmitField("Submit")
 
 
+def check_confirmation(appo):
+    result = []
+    for appointment in appo:
+        participations = Participation.query.filter(Participation.confirmed != 2, Participation.appointmentId == appointment.id).all()
+        if len(participations) > 0:
+            result.append(False)
+        else:
+            result.append(True)
+    return result
+
+
+
+
+
+
 def getWeekdays(firstDay):
     weekdays = []
     for i in range(7):
@@ -112,6 +127,8 @@ def get_times(debut, intervalle):
         result.append(debut + timedelta(minutes=(i)*intervalle))
 
     return result
+
+
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -174,6 +191,36 @@ def make_appointment(date, time, id):
         # =datetime(year=date.year(), month=date.month(), day=date.day(), hour=time.hour(), minute=time.minute())
 
     return render_template('confirmation.html', titleForm=titleForm, date=date, time=time, id=id)
+
+
+
+
+@ app.route('/dashboard', methods=['GET', 'POST'])
+@ login_required
+def dashboard():
+    dateform = DateSelection()
+
+    if dateform.validate_on_submit():
+        ###SelectedDate = dateform.start_date.data
+        SelectedDate = datetime(
+            dateform.start_date.data.year, dateform.start_date.data.month, dateform.start_date.data.day, 2, 2, 00)
+        
+    else:
+        SelectedDate = datetime.today()
+        
+    weekdays = getWeekdays(SelectedDate)
+
+
+    times = get_times(datetime(2020, 1, 1, 00, 00, 00), 30)
+    time_start_plus_7 = SelectedDate + timedelta(days=7)
+    appointments = Appointment.query.filter(
+        Appointment.creatorId == current_user.id, Appointment.time_start >= SelectedDate, Appointment.time_end < time_start_plus_7).all()
+    confirmations = check_confirmation(appointments)
+    #appointments = [appointments, confirmations]
+    print("appointment "+str(appointments[0].time_start.date()))
+    print("confirmations "+str(confirmations[0]))
+
+    return render_template('dashboard.html', appointments=appointments,confirmations = confirmations, dateform=dateform, userId=current_user.id, weekdays=weekdays, times=times)
 
 
 @ app.route('/login', methods=['GET', 'POST'])
