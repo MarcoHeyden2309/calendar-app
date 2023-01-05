@@ -1,5 +1,5 @@
-from flask import Flask, render_template, redirect, url_for, request
-from flask_bootstrap import Bootstrap
+from flask import Flask, render_template, redirect, url_for, request, current_app
+
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField, DateTimeField, DateField
 from wtforms.validators import InputRequired, Email, Length
@@ -10,11 +10,15 @@ from datetime import datetime, date, timedelta
 from flask_mysqldb import MySQL
 from mysql.connector import connect
 
+
 app = Flask(__name__)
+
 app.config['SECRET_KEY'] = 'secret'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///myDB.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-bootstrap = Bootstrap(app)
+#app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///myDB.db'
+#app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://marco:@localhost/calendardb'
+
 db = SQLAlchemy(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -47,7 +51,7 @@ class Participation(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     userId = db.Column(db.Integer, db.ForeignKey('user.id'))
     appointmentId = db.Column(db.Integer, db.ForeignKey('appointment.id'))
-    confirmed = db.Column(db.Boolean)
+    confirmed = db.Column(db.Integer)
 
 
 @login_manager.user_loader
@@ -70,6 +74,7 @@ class RegisterForm(FlaskForm):
                            InputRequired(), Length(min=4, max=15)])
     password = PasswordField('password', validators=[
                              InputRequired(), Length(min=8, max=80)])
+    submit = SubmitField("Submit")
 
 
 class SearchForm(FlaskForm):
@@ -110,6 +115,7 @@ def get_times(debut, intervalle):
 
 
 @app.route('/', methods=['GET', 'POST'])
+@login_required
 def index():
     form = SearchForm()
     foundUsers = []
@@ -122,6 +128,7 @@ def index():
 
 
 @app.route('/user/<id>', methods=['GET', 'POST'])
+@ login_required
 def get_user_calender(id):
     dateform = DateSelection()
 
@@ -148,11 +155,23 @@ def get_user_calender(id):
 @ login_required
 def make_appointment(date, time, id):
     titleForm = AppointmentTitle()
+    date_obj = datetime.strptime(date+" "+time, "%Y-%m-%d %H:%M:%S")
+    print(date_obj)
     if titleForm.validate_on_submit():
-        new_appointment = Appointment(time_start=datetime(year=date.year(), month=date.month(), day=date.day(), hour=time.hour(
-        ), minute=time.minute()), time_end=(datetime(year=date.year(), month=date.month(), day=date.day(), hour=time.hour(), minute=time.minute())+timedelta(minutes=30)), title=titleForm.title.data, creatorId=id)
-    else:
-        return redirect('/appointment/'+date+'/'+time+'/'+'/'+id)
+        new_appointment = Appointment(time_start=date_obj, time_end=(
+            date_obj+timedelta(minutes=30)), title=titleForm.title.data, creatorId=current_user.id)
+        db.session.add(new_appointment)
+        db.session.commit()
+        new_participation1 = Participation(
+            userId=current_user.id, appointmentId=new_appointment.id, confirmed=2)
+        new_participation2 = Participation(
+            userId=id, appointmentId=new_appointment.id, confirmed=0)
+        db.session.add(new_participation1)
+        db.session.add(new_participation2)
+        db.session.commit()
+        #flash("Votre rendez-vous a été pris avec succès! Il faut maintenant attendre la confirmation de l'autre participant.")
+        return redirect('/user/'+id)
+        # =datetime(year=date.year(), month=date.month(), day=date.day(), hour=time.hour(), minute=time.minute())
 
     return render_template('confirmation.html', titleForm=titleForm, date=date, time=time, id=id)
 
@@ -166,9 +185,9 @@ def login():
         if user:
             if check_password_hash(user.password, form.password.data):
                 login_user(user, remember=form.remember.data)
-                return redirect(url_for('dashboard'))
-
-        return render_template('you are logged in')
+                return redirect('/')
+            else:
+                 return 'user '+ form.password.data
 
     return render_template('login.html', form=form)
 
@@ -200,3 +219,5 @@ def logout():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+

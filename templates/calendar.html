@@ -13,6 +13,9 @@
     </style>
 </head>
 <body>
+{% for message in get_flashed_messages() %}
+<div class="flash">{{ message }}</div>
+{% endfor %}
 
     {% for appo in appointments %}
     <h1>{{appo.id}}</h1>
@@ -51,7 +54,7 @@
            {% for day in weekdays %}
             
                 {% if appointments == [] %}
-                    <td> <a href="/appointment/{{day[1].date()}}/{{time.time()}}/{{userId}}">Prendre rendez-vous test</a></td>
+                    <td> <a href="/appointment/{{day[1].date()}}/{{time.time()}}/{{userId}}"> Prendre rendez-vous</a></td>
                 {% else %}
                 
            
@@ -73,7 +76,7 @@
                     {% endfor %}
                
                     {% if not foundAppointment.found %}
-                    <td> <a href="/appointment/{{day[1].date()}}/{{time.time()}}/{{userId}}">testst</a></td>
+                    <td> <a href="/appointment/{{day[1].date()}}/{{time.time()}}/{{userId}}">Prendre rendez-vous</a></td>
                     
                     {% endif %}
                     {% set foundAppointment.found=False %}
