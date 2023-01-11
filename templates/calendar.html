@@ -9,14 +9,7 @@
 
 {% set foundAppointment = namespace(found=False) %}
 
-{% for message in get_flashed_messages() %}
-<div class="flash">{{ message }}</div>
-{% endfor %}
 
-    {% for appo in appointments %}
-    <h1>{{appo.id}}</h1>
-    <h2>{{appo.time_start}}</h2>
-    {% endfor %}
 
     <form action="/user/{{userId}}" method="POST">
         {{ dateform.hidden_tag() }}
@@ -72,7 +65,7 @@
                     {% endfor %}
                
                     {% if not foundAppointment.found %}
-                    <td> <a href="/appointment/{{day[1].date()}}/{{time.time()}}/{{userId}}">Prendre rendez-vous</a></td>
+                    <td style="background-color: rgba(0, 123, 255, 0.1);"> <a href="/appointment/{{day[1].date()}}/{{time.time()}}/{{userId}}">Prendre rendez-vous</a></td>
                     
                     {% endif %}
                     {% set foundAppointment.found=False %}

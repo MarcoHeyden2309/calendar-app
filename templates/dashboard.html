@@ -13,7 +13,7 @@
 
 
 
-<form action="/user/{{userId}}" method="POST">
+<form action="/dashboard" method="POST">
     {{ dateform.hidden_tag() }}
     {{dateform.start_date.label}}
     {{ dateform.start_date() }}
@@ -45,7 +45,7 @@
             {% for day in weekdays %}
 
             {% if appointments == [] %}
-            <td> <a href="/appointment/{{day[1].date()}}/{{time.time()}}/{{userId}}"> Prendre rendez-vous</a></td>
+            <td style="background-color: rgba(0, 123, 255, 0.1);"> </td>
             {% else %}
 
 
@@ -56,20 +56,39 @@
                 {% if confirmations[i.number] %}
                 <td style="background-color: green;">{{ app.title}} <br>
                     Date:{{ app.time_start.day }}/{{app.time_start.month}}/{{app.time_start.year}} <br>
-                    Heure: {{app.time_start.time()}} - {{app.time_end.time()}} </td>
+                    Heure: {{app.time_start.time()}} - {{app.time_end.time()}} 
+                    number: {{i.number}}
+                    bool: {{confirmations[i.number]}}
+                </td>
 
+                    {% set i.number = i.number+1 %}
+                    
                 {% elif not confirmations[i.number] %}
-                 <td style="background-color:  rgba(255, 159, 0, 0.1);">{{ app.title}} <br>
+                 <td style="background-color:  rgba(255, 157, 0, 0.253);">{{ app.title}} <br>
                     Date:{{ app.time_start.day }}/{{app.time_start.month}}/{{app.time_start.year}} <br>
-                    Heure: {{app.time_start.time()}} - {{app.time_end.time()}} </td>
+                    Heure: {{app.time_start.time()}} - {{app.time_end.time()}} 
+                    number: {{i.number}}
+                    bool: {{confirmations[i.number]}}
+                    <br>
+                    {% if userId != app.creatorId %}
+                        <button onclick="window.location.href='/confirm/{{app.id}}/2';">Confirm</button>
+                   
+                    
+                        <button onclick="window.location.href='/confirm/{{app.id}}/1';">Decline</button>
+                    
+                    {% endif %}
+                    {% set i.number = i.number+1 %}
+                </td>
 
                 {% endif %}
+                
 
             {% endif %}
 
-
+                
 
             {% endfor %}
+            
 
             {% if not foundAppointment.found %}
             <td style="background-color: rgba(0, 123, 255, 0.1);"> </td>
@@ -89,5 +108,5 @@
 
 
     </table>
-
+    {% set i.number = 0 %}
     {% endblock %}

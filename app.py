@@ -92,15 +92,23 @@ class AppointmentTitle(FlaskForm):
     title = StringField('Title', validators=[InputRequired()])
     submit = SubmitField("Submit")
 
+class AppointmentConfirmation(FlaskForm):
+    confirmation = BooleanField("Do you want to confirm the appointment?")
+    submit = SubmitField("Submit")
 
-def check_confirmation(appo):
+
+
+def check_confirmation(appoId):
     result = []
-    for appointment in appo:
-        participations = Participation.query.filter(Participation.confirmed != 2, Participation.appointmentId == appointment.id).all()
+    number = 0
+    for appointment in appoId:
+        participations = Participation.query.filter( Participation.appointmentId == appointment).all()
+        #print(str(Participation.query.filter(Participation.confirmed != 2, Participation.appointmentId == appointment.id).statement))
         if len(participations) > 0:
             result.append(False)
         else:
             result.append(True)
+    print(result)
     return result
 
 
@@ -199,6 +207,7 @@ def make_appointment(date, time, id):
 @ login_required
 def dashboard():
     dateform = DateSelection()
+    confirm_appoinment = AppointmentConfirmation()
 
     if dateform.validate_on_submit():
         ###SelectedDate = dateform.start_date.data
@@ -213,17 +222,37 @@ def dashboard():
 
     times = get_times(datetime(2020, 1, 1, 00, 00, 00), 30)
     time_start_plus_7 = SelectedDate + timedelta(days=7)
+    appointments_id = [row.appointmentId for row in Participation.query.filter(Participation.userId==current_user.id).order_by(Participation.id).all()]
+    
+
+    
     appointments = Appointment.query.filter(
-        Appointment.creatorId == current_user.id, Appointment.time_start >= SelectedDate, Appointment.time_end < time_start_plus_7).all()
-    confirmations = check_confirmation(appointments)
+        Appointment.id.in_(appointments_id), Appointment.time_start >= SelectedDate, Appointment.time_end < time_start_plus_7).all()
+    
+    participations = Participation.query.filter( Participation.appointmentId.in_(appointments_id)).order_by(Participation.id).all()
+    for part in participations:
+        print(str(part.confirmed))        
+    
+    confirmations = check_confirmation(appointments_id)
+    print(str(appointments))
     #appointments = [appointments, confirmations]
-    print("appointment "+str(appointments[0].time_start.date()))
-    print("confirmations "+str(confirmations[0]))
-
-    return render_template('dashboard.html', appointments=appointments,confirmations = confirmations, dateform=dateform, userId=current_user.id, weekdays=weekdays, times=times)
 
 
-@ app.route('/login', methods=['GET', 'POST'])
+    return render_template('dashboard.html', appointments=appointments,confirmations = confirmations, dateform=dateform, userId=current_user.id, weekdays=weekdays, times=times, confirm_appoinment = confirm_appoinment)
+
+
+
+@ app.route('/confirm/<appId>/<confirm>', methods=['GET'])
+@ login_required
+def confirm(appId, confirm):
+    participation = Participation.query.filter(Participation.appointmentId==appId, Participation.userId==current_user.id).first()
+    participation.confirmed = int(confirm)
+    db.session.commit()
+
+    return redirect('/dashboard')
+
+
+@ app.route('/login', methods=['GET','POST'])
 def login():
     form = LoginForm()
 
