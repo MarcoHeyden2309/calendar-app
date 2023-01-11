@@ -20,9 +20,11 @@
 
 {% else %}
 {% for user in foundUsers %}
-
-<a href="/user/{{user.id}}">{{user.username}}</a>
-
+    {% if user.id == currentuserId %}
+        <h2>You can not make an appointment with yourself</h2>
+    {% else %}
+        <a href="/user/{{user.id}}">{{user.username}}</a>
+    {% endif %}
 {% endfor %}
 {% endif %}
 {% endblock %}

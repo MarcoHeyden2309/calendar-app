@@ -99,16 +99,16 @@ class AppointmentConfirmation(FlaskForm):
 
 
 def check_confirmation(appoId):
-    result = []
-    number = 0
+    result = {}
+    
     for appointment in appoId:
-        participations = Participation.query.filter( Participation.appointmentId == appointment).all()
+        participations = Participation.query.filter( Participation.appointmentId == appointment, Participation.confirmed !=2).all()
         #print(str(Participation.query.filter(Participation.confirmed != 2, Participation.appointmentId == appointment.id).statement))
         if len(participations) > 0:
-            result.append(False)
+            result.update({appointment: False})
         else:
-            result.append(True)
-    print(result)
+            result.update({appointment: True})
+    
     return result
 
 
@@ -144,12 +144,16 @@ def get_times(debut, intervalle):
 def index():
     form = SearchForm()
     foundUsers = []
+    noUser = True
+    currentuserId = current_user.id
     if form.validate_on_submit():
         foundUsers = User.query.filter_by(username=form.InputString.data).all()
-        if foundUsers == []:
-            return render_template('index.html', form=form, foundUsers=foundUsers, noUser=True)
+        if len(foundUsers) == 0: 
+            noUser = True
+        else:
+            noUser = False
 
-    return render_template('index.html', form=form, foundUsers=foundUsers)
+    return render_template('index.html', form=form, foundUsers=foundUsers, noUser=noUser, currentuserId = currentuserId)
 
 
 @app.route('/user/<id>', methods=['GET', 'POST'])
