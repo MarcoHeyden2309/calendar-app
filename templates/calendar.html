@@ -43,7 +43,7 @@
            {% for day in weekdays %}
             
                 {% if appointments == [] %}
-                    <td> <a href="/appointment/{{day[1].date()}}/{{time.time()}}/{{userId}}"> Prendre rendez-vous</a></td>
+                    <td> <a href="/appointment/{{day[1].date()}}/{{time.time()}}/{{otherUserId}}"> Prendre rendez-vous</a></td>
                 {% else %}
                 
            
@@ -65,7 +65,7 @@
                     {% endfor %}
                
                     {% if not foundAppointment.found %}
-                    <td style="background-color: rgba(0, 123, 255, 0.1);"> <a href="/appointment/{{day[1].date()}}/{{time.time()}}/{{userId}}">Prendre rendez-vous</a></td>
+                    <td style="background-color: rgba(0, 123, 255, 0.1);"> <a href="/appointment/{{day[1].date()}}/{{time.time()}}/{{otherUserId}}">Prendre rendez-vous</a></td>
                     
                     {% endif %}
                     {% set foundAppointment.found=False %}

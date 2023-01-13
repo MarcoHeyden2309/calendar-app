@@ -4,7 +4,100 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" type="text/css" href="static/styles.css">
+<style>
+    /* Set the background color of the table */
+    table {
+        background-color: #282828;
+        color: white;
+        width: 100%;
+        text-align: center;
+    }
+
+    /* Style the table headers */
+    th,
+    td {
+        padding: 10px;
+        border: 1px solid #282828;
+    }
+
+    /* Style the first row of the table (the hour headers) */
+    tr:first-child {
+        background-color: #282828;
+        color: white;
+        font-weight: bold;
+    }
+
+    /* Style the buttons in the table cells */
+    button {
+        background-color: #282828;
+        color: white;
+        border: none;
+        padding: 10px;
+        font-size: 14px;
+        cursor: pointer;
+        width: 100%;
+        height: 100%;
+    }
+
+    /* Style the "available" table cells */
+    td[style="background-color: rgba(0, 123, 255, 0.1);"] {
+        background-color: #282828;
+    }
+
+    /* Style the "confirmed" table cells */
+    td[style="background-color: green;"] {
+        background-color: #282828;
+        color: white;
+    }
+
+    /* Style the "pending" table cells */
+    td[style="background-color:  rgba(255, 157, 0, 0.253);"] {
+        background-color: #282828;
+        color: white;
+    }
+
+    table {
+        position: relative;
+    }
+
+    table tr:first-child {
+        position: sticky;
+        top: 0;
+        background-color: #282828;
+    }
+</style>
+
+
+<style>
+    /* Set the background color and font color of the navigation bar */
+    nav {
+        background-color: #282828;
+        color: white;
+    }
+
+    /* Style the navigation links */
+    nav a {
+        color: white;
+        text-decoration: none;
+        padding: 10px;
+        display: inline-block;
+    }
+
+    /* Style the active link differently */
+    nav a.active {
+        background-color: #282828;
+    }
+
+    /* Style the hover state of the links */
+    nav a:hover {
+        background-color: #282828;
+    }
+
+    /* Style the list items in the navigation bar */
+    nav li {
+        display: inline-block;
+    }
+</style>
     <title>Document</title>
 </head>
 <body>
@@ -15,6 +108,11 @@
             <li><a href="/login">Login</a></li>
             <li><a href="/logout">Logout</a></li>
         </ul>
+        {% if not name == None %}
+            <div id="username">
+            Welcome, {{name}}
+            </div>
+        {% endif %}
     </nav>
 
     {%block content%}

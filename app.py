@@ -1,7 +1,7 @@
-from flask import Flask, render_template, redirect, url_for, request, current_app
+from flask import Flask, render_template, redirect, url_for, request, current_app, g
 
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, BooleanField, SubmitField, DateTimeField, DateField
+from wtforms import StringField, PasswordField, BooleanField, SubmitField, DateTimeField, DateField, HiddenField
 from wtforms.validators import InputRequired, Email, Length
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -96,6 +96,12 @@ class AppointmentConfirmation(FlaskForm):
     confirmation = BooleanField("Do you want to confirm the appointment?")
     submit = SubmitField("Submit")
 
+class AppointmentForm(FlaskForm):
+    date = HiddenField()
+    time = HiddenField()
+    userId = HiddenField()
+    submit = SubmitField("Prendre rendez-vous")
+
 
 
 def check_confirmation(appoId):
@@ -120,7 +126,7 @@ def getWeekdays(firstDay):
     weekdays = []
     for i in range(7):
         currentDay = firstDay + timedelta(days=(i))
-        print(currentDay.strftime('%A'), str(currentDay))
+        
         weekdays.append([currentDay.strftime('%A'), currentDay])
     return weekdays
 
@@ -129,19 +135,32 @@ def get_times(debut, intervalle):
 
     result = []
     addition = 1440/intervalle
-    print(int(addition))
+    
     i = 0
     for i in range(int(addition)):
         result.append(debut + timedelta(minutes=(i)*intervalle))
 
     return result
 
+@login_manager.user_loader
+def load_user(user_id):
+    # Retrieve the user object from the database using the user_id
+    user = User.query.get(user_id)
+    return user
+
+@app.before_request
+def before_request():
+    g.current_user = current_user
 
 
 
 @app.route('/', methods=['GET', 'POST'])
 @login_required
 def index():
+    if current_user.is_authenticated:
+        name = current_user.username
+    else:
+        name = None    
     form = SearchForm()
     foundUsers = []
     noUser = True
@@ -153,31 +172,80 @@ def index():
         else:
             noUser = False
 
-    return render_template('index.html', form=form, foundUsers=foundUsers, noUser=noUser, currentuserId = currentuserId)
+    return render_template('index.html', form=form, foundUsers=foundUsers, noUser=noUser, currentuserId = currentuserId, name = name)
+
+
+@app.route('/userorg/<id>', methods=['GET', 'POST'])
+@ login_required
+def get_user_calender2(id):
+    dateform = DateSelection()
+    if current_user.is_authenticated:
+        name = current_user.username
+    else:
+        name = None      
+    if dateform.validate_on_submit():
+        ###SelectedDate = dateform.start_date.data
+        SelectedDate = datetime(
+            dateform.start_date.data.year, dateform.start_date.data.month, dateform.start_date.data.day, 2, 2, 00)
+        
+    else:
+        SelectedDate = datetime.today()
+        
+    weekdays = getWeekdays(SelectedDate)
+    
+
+
+    times = get_times(datetime(2020, 1, 1, 00, 00, 00), 30)
+    time_start_plus_7 = SelectedDate + timedelta(days=7)
+    appointments = Appointment.query.filter(
+        Appointment.creatorId == id, Appointment.time_start >= SelectedDate, Appointment.time_end < time_start_plus_7).all()
+    
+
+    return render_template('dashboard2.html', appointments=appointments, dateform=dateform, userId=id, weekdays=weekdays, times=times, name = name)
 
 
 @app.route('/user/<id>', methods=['GET', 'POST'])
 @ login_required
 def get_user_calender(id):
+    print("userid:"+id)
     dateform = DateSelection()
-
+    confirm_appoinment = AppointmentConfirmation()
+    if current_user.is_authenticated:
+        name = current_user.username
+    else:
+        name = None  
     if dateform.validate_on_submit():
         ###SelectedDate = dateform.start_date.data
         SelectedDate = datetime(
             dateform.start_date.data.year, dateform.start_date.data.month, dateform.start_date.data.day, 2, 2, 00)
-        print("selected date "+str(SelectedDate))
+        
     else:
         SelectedDate = datetime.today()
-        print("selected date "+str(SelectedDate))
+        
     weekdays = getWeekdays(SelectedDate)
-    print(weekdays)
+
+    current_date = datetime.now()
+    current_time = datetime.now().time()
     times = get_times(datetime(2020, 1, 1, 00, 00, 00), 30)
     time_start_plus_7 = SelectedDate + timedelta(days=7)
-    appointments = Appointment.query.filter(
-        Appointment.creatorId == id, Appointment.time_start >= SelectedDate, Appointment.time_end < time_start_plus_7).all()
-    print(appointments)
+    appointments_id = [row.appointmentId for row in Participation.query.filter(Participation.userId==current_user.id).order_by(Participation.id).all()]
+    
 
-    return render_template('calendar.html', appointments=appointments, dateform=dateform, userId=id, weekdays=weekdays, times=times)
+    
+    appointments = Appointment.query.filter(
+        Appointment.id.in_(appointments_id), Appointment.time_start >= SelectedDate, Appointment.time_end < time_start_plus_7).all()
+    
+    participations = Participation.query.filter( Participation.appointmentId.in_(appointments_id)).order_by(Participation.id).all()
+    for part in participations:
+        print(str(part.confirmed))        
+    
+    confirmations = check_confirmation(appointments_id)
+    print("Confirmations: "+str(confirmations))
+    print("appointments: "+str(appointments))
+
+
+    return render_template('dashboard_other_user.html', appointments=appointments,confirmations = confirmations, dateform=dateform, otherUserId=id, weekdays=weekdays, times=times, confirm_appoinment = confirm_appoinment, current_date=current_date, current_time=current_time, name = name)
+
 
 
 @ app.route('/appointment/<date>/<time>/<id>', methods=['GET', 'POST'])
@@ -185,7 +253,12 @@ def get_user_calender(id):
 def make_appointment(date, time, id):
     titleForm = AppointmentTitle()
     date_obj = datetime.strptime(date+" "+time, "%Y-%m-%d %H:%M:%S")
-    print(date_obj)
+    
+    if current_user.is_authenticated:
+        name = current_user.username
+    else:
+        name = None  
+
     if titleForm.validate_on_submit():
         new_appointment = Appointment(time_start=date_obj, time_end=(
             date_obj+timedelta(minutes=30)), title=titleForm.title.data, creatorId=current_user.id)
@@ -202,7 +275,7 @@ def make_appointment(date, time, id):
         return redirect('/user/'+id)
         # =datetime(year=date.year(), month=date.month(), day=date.day(), hour=time.hour(), minute=time.minute())
 
-    return render_template('confirmation.html', titleForm=titleForm, date=date, time=time, id=id)
+    return render_template('confirmation.html', titleForm=titleForm, date=date, time=time, id=id, name = name)
 
 
 
@@ -212,7 +285,10 @@ def make_appointment(date, time, id):
 def dashboard():
     dateform = DateSelection()
     confirm_appoinment = AppointmentConfirmation()
-
+    if current_user.is_authenticated:
+        name = current_user.username
+    else:
+        name = None  
     if dateform.validate_on_submit():
         ###SelectedDate = dateform.start_date.data
         SelectedDate = datetime(
@@ -238,11 +314,11 @@ def dashboard():
         print(str(part.confirmed))        
     
     confirmations = check_confirmation(appointments_id)
-    print(str(appointments))
-    #appointments = [appointments, confirmations]
+    print("Confirmations: "+str(confirmations))
+    print("appointments: "+str(appointments))
 
 
-    return render_template('dashboard.html', appointments=appointments,confirmations = confirmations, dateform=dateform, userId=current_user.id, weekdays=weekdays, times=times, confirm_appoinment = confirm_appoinment)
+    return render_template('dashboard.html', appointments=appointments,confirmations = confirmations, dateform=dateform, userId=current_user.id, weekdays=weekdays, times=times, confirm_appoinment = confirm_appoinment, name = name)
 
 
 
@@ -259,23 +335,31 @@ def confirm(appId, confirm):
 @ app.route('/login', methods=['GET','POST'])
 def login():
     form = LoginForm()
-
+    if current_user.is_authenticated:
+        name = current_user.username
+    else:
+        name = None  
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data).first()
         if user:
             if check_password_hash(user.password, form.password.data):
                 login_user(user, remember=form.remember.data)
+                
+                
                 return redirect('/')
             else:
                  return 'user '+ form.password.data
 
-    return render_template('login.html', form=form)
+    return render_template('login.html', form=form, name = name)
 
 
 @ app.route('/signup', methods=['GET', 'POST'])
 def signup():
     form = RegisterForm()
-
+    if current_user.is_authenticated:
+        name = current_user.username
+    else:
+        name = None  
     if form.validate_on_submit():
         hashed_password = generate_password_hash(
             form.password.data, method='sha256')
@@ -287,13 +371,14 @@ def signup():
         return '<h1>New user has been created!</h1>'
         # return '<h1>' + form.username.data + ' ' + form.email.data + ' ' + form.password.data + '</h1>'
 
-    return render_template('signup.html', form=form)
+    return render_template('signup.html', form=form, name = name)
 
 
 @ app.route('/logout')
 @ login_required
 def logout():
     logout_user()
+   
     return redirect(url_for('index'))
 
 
