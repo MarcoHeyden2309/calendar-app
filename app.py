@@ -104,6 +104,59 @@ class AppointmentForm(FlaskForm):
 
 
 
+def find_available_time_slots(user_ids, current_time):
+    # retrieve all appointments for the given users
+    participations = Participation.query.filter(Participation.userId.in_(user_ids)).all()
+
+    # create a list of busy time slots for each user
+    busy_slots = {}
+    for user_id in user_ids:
+        busy_slots[user_id] = []
+
+    # populate the busy slots for each user
+    for participation in participations:
+        for user_id in user_ids:
+            if participation.userId == user_id and participation.confirmed==1:
+                appointment=Appointment.query.filter_by(id=participation.appointmentId).first()
+                busy_slots[user_id].append((appointment.time_start, appointment.time_end))
+
+    # initialize the available time slots list
+    available_slots = []
+
+    # start checking time slots from the current time
+    
+    current_time = current_time.replace(microsecond=0, second=0)
+    if current_time.minute > 0 and current_time.minute <=30:
+        current_time = current_time.replace(minute=30)
+    elif current_time.minute > 30:
+        current_time = current_time.replace(minute=0, hour=current_time.hour+1)
+    while len(available_slots) < 5:
+        # check if all users are available during the current time slot
+        all_available = True
+        for user_id in user_ids:
+            for busy_slot in busy_slots[user_id]:
+                if current_time >= busy_slot[0] and current_time < busy_slot[1]:
+                    all_available = False
+                    break
+            if not all_available:
+                break
+        
+        # if all users are available, add the current time slot to the list
+        if all_available:
+            available_slots.append(current_time)
+
+        # increment the current time by 30 minutes
+        current_time += timedelta(minutes=30)
+        current_time = current_time.replace(microsecond=0, second=0)
+        if current_time.minute > 0 and current_time.minute <=30:
+            current_time = current_time.replace(minute=30)
+        elif current_time.minute > 30:
+            current_time = current_time.replace(minute=0, hour=current_time.hour+1)
+
+    return available_slots
+
+
+
 def check_confirmation(appoId):
     result = {}
     
@@ -330,6 +383,19 @@ def confirm(appId, confirm):
     db.session.commit()
 
     return redirect('/dashboard')
+
+
+@ app.route('/test', methods=['GET'])
+def test():
+    time = datetime.now()
+    test= find_available_time_slots([4,5], time)
+    print(str(test))
+    return 'succes'
+
+
+
+
+
 
 
 @ app.route('/login', methods=['GET','POST'])
