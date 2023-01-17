@@ -103,6 +103,12 @@ class AppointmentForm(FlaskForm):
     submit = SubmitField("Prendre rendez-vous")
 
 
+class MatchingAlgorithm(FlaskForm):
+
+    submit = SubmitField(label='Find common time slots')
+
+
+
 
 def find_available_time_slots(user_ids, current_time):
     # retrieve all appointments for the given users
@@ -204,6 +210,9 @@ def load_user(user_id):
 @app.before_request
 def before_request():
     g.current_user = current_user
+    #g.selected_users = []
+
+
 
 
 
@@ -216,7 +225,7 @@ def index():
         name = None    
     form = SearchForm()
     foundUsers = []
-    noUser = True
+    noUser = False
     currentuserId = current_user.id
     if form.validate_on_submit():
         foundUsers = User.query.filter_by(username=form.InputString.data).all()
@@ -385,17 +394,54 @@ def confirm(appId, confirm):
     return redirect('/dashboard')
 
 
-@ app.route('/test', methods=['GET'])
-def test():
-    time = datetime.now()
-    test= find_available_time_slots([4,5], time)
-    print(str(test))
-    return 'succes'
+@ app.route('/matching', methods=['GET', 'POST'])
+@ login_required
+def match():
+    #slots = find_available_time_slots()
+    form = SearchForm()
+    
+    foundUsers = []
+    sameUser = False
+    sameSelectedUser = False
+    if not hasattr(current_app, 'selected_users'):
+        current_app.selected_users = {}
+
+    
+    
+    if form.validate_on_submit():
+        foundUsers = User.query.filter_by(username=form.InputString.data).first()
+        
+        if foundUsers:
+            if foundUsers.id == current_user.id:
+                sameUser = True
+            if current_app.selected_users.get(str(foundUsers.id)) != None:
+                sameSelectedUser = True
+
+    
+
+  
+    return render_template('matching_algorithm.html', form = form, sameUser = sameUser, foundUsers = foundUsers, sameSelectedUser = sameSelectedUser, selectedUsers = current_app.selected_users)
+
+
+@ app.route('/add_selected_user/<id>/<name>', methods=['GET', 'POST'])
+@ login_required
+def add_selected_user(id, name):
+    current_app.selected_users[int(id)] = name
+
+    print(str(current_app.selected_users))
+    return redirect('/matching')
 
 
 
-
-
+@ app.route('/matching/asked', methods=['GET', 'POST'])
+@ login_required
+def ask():
+    
+    cureentTime = datetime.now()
+    idArray = list(current_app.selected_users.keys())
+    time_slots = find_available_time_slots(idArray, cureentTime)
+    print(str(time_slots))
+    return time_slots
 
 
 @ app.route('/login', methods=['GET','POST'])

@@ -2,38 +2,47 @@
 {% extends "navigation.html" %}
 {% block content %}
 
+    {% set foundUserArray = [] %}
 
-<form action="/" method="POST">
-    {{ form.hidden_tag() }}
-    {{form.InputString.label}}
-    {{ form.InputString() }}
-    {{ form.submit()}}
+    <form action="/matching" method="POST">
+        {{ form.hidden_tag() }}
+        {{form.InputString.label}}
+        {{ form.InputString() }}
+        {{ form.submit()}}
 
 
-</form>
-{% if noUser==True %}
-<h2>Aucun utilisateur trouvé!</h2>
-
-{% else %}
-{% for user in foundUsers %}
-{% if user.id == currentuserId %}
-<h2>You can not make an appointment with yourself</h2>
-{% else %}
-<a href="/user/{{user.id}}">{{user.username}}</a>
-{% endif %}
-{% endfor %}
-{% endif %}
+    </form>
 
 
 
+    {% if not foundUsers %}
+        <h2>Aucun utilisateur trouvé!</h2>
+
+    {% elif sameUser %}
+        <h2>You can not make an appointment with yourself</h2>
+
+    {% else %}
+        
+        {% if sameSelectedUser == False %}
+        <button type="button" onclick="location.href='/add_selected_user/{{foundUsers.id}}/{{foundUsers.username}}'">
+            {{foundUsers.username}}
+        </button>
+        {% else %}
+        <h2>You already selected this user</h2>
+        {% endif%}
+    {% endif %}
 
 
-<form action="/user/{{otherUserId}}" method="POST">
+    <ul>
+        {% for value in selectedUsers.values() %}
+        <li>{{ value }}</li>
+        {% endfor %}
+    </ul>
 
-    {{ dateform.hidden_tag() }}
-    {{dateform.start_date.label}}
-    {{ dateform.start_date() }}
-    {{ dateform.submit()}}
+        <button type="button" onclick="location.href='/matching/asked'">
+            find common timeslots
+        </button>
+
 
 
 {% endblock %}

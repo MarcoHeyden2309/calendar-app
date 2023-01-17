@@ -7,24 +7,24 @@
 
 
     <h1>Bievenue au Calendrier Interactif</h1>
-<form action="/" method="POST">
-    {{ form.hidden_tag() }}
-    {{form.InputString.label}}
-    {{ form.InputString() }}
-    {{ form.submit()}}
+    <form action="/" method="POST">
+        {{ form.hidden_tag() }}
+        {{form.InputString.label}}
+        {{ form.InputString() }}
+        {{ form.submit()}}
 
 
-</form>
-{% if noUser==True %}
-<h2>Aucun utilisateur trouvé!</h2>
+    </form>
+    {% if noUser==True %}
+        <h2>Aucun utilisateur trouvé!</h2>
 
-{% else %}
-{% for user in foundUsers %}
-    {% if user.id == currentuserId %}
-        <h2>You can not make an appointment with yourself</h2>
     {% else %}
-        <a href="/user/{{user.id}}">{{user.username}}</a>
+        {% for user in foundUsers %}
+            {% if user.id == currentuserId %}
+                <h2>You can not make an appointment with yourself</h2>
+            {% else %}
+                <a href="/user/{{user.id}}">{{user.username}}</a>
+            {% endif %}
+        {% endfor %}
     {% endif %}
-{% endfor %}
-{% endif %}
 {% endblock %}
