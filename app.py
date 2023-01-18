@@ -2,7 +2,7 @@ from flask import Flask, render_template, redirect, url_for, request, current_ap
 
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField, DateTimeField, DateField, HiddenField
-from wtforms.validators import InputRequired, Email, Length
+from wtforms.validators import InputRequired, Email, Length, DataRequired
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
@@ -102,10 +102,9 @@ class AppointmentForm(FlaskForm):
     userId = HiddenField()
     submit = SubmitField("Prendre rendez-vous")
 
-
-class MatchingAlgorithm(FlaskForm):
-
-    submit = SubmitField(label='Find common time slots')
+class SlotForm(FlaskForm):
+    title = StringField('Title')
+    submit = SubmitField('Select this Timeslot')
 
 
 
@@ -404,7 +403,7 @@ def match():
     sameUser = False
     sameSelectedUser = False
     if not hasattr(current_app, 'selected_users'):
-        current_app.selected_users = {}
+        current_app.selected_users = {5: 'oliver', 6: 'marco2'}
 
     
     
@@ -441,7 +440,28 @@ def ask():
     idArray = list(current_app.selected_users.keys())
     time_slots = find_available_time_slots(idArray, cureentTime)
     print(str(time_slots))
-    return time_slots
+    if request.method == 'POST':
+        title = request.form['title']
+        slot = request.form['slot']
+        
+        new_appointment = Appointment(time_start=slot, time_end=(datetime.strptime(slot, "%Y-%m-%d %H:%M:%S")+timedelta(minutes=30)), title=title, creatorId=current_user.id)
+        db.session.add(new_appointment)
+        db.session.commit()
+        new_participation1 = Participation(
+        userId=current_user.id, appointmentId=new_appointment.id, confirmed=2)
+        db.session.add(new_participation1)
+        for id in idArray:
+            new_participation2 = Participation(
+            userId=id, appointmentId=new_appointment.id, confirmed=0)
+            db.session.add(new_participation2)
+        
+        db.session.commit()  
+              
+        print("slot-title "+str(type(slot)))
+        return redirect('/dashboard')
+    return render_template('select_common_slot.html', foundSlots = time_slots)
+
+
 
 
 @ app.route('/login', methods=['GET','POST'])
