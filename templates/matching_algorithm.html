@@ -2,23 +2,14 @@
 {% extends "navigation.html" %}
 {% block content %}
 
-<!--
-    <form action="/matching" method="POST">
-        {{ form.hidden_tag() }}
-        {{form.InputString.label}}
-        {{ form.InputString() }}
-        {{ form.submit()}}
 
-
+    <form method="POST" action="/matching">
+        <input type="text" name="username">
+        <input type="submit" value="Add User" name="addUser_button">
     </form>
-    -->
-                    <form method="POST" action="/matching">
-                    <input type="text" name="username">
-                    <input type="submit" value="Add User" name="addUser_button">
-                    </form>
 
 
-    {% if not foundUsers %}
+    {% if not noUserFound %}
         <h2>Aucun utilisateur trouvé!</h2>
 
     {% elif sameUser %}
@@ -39,10 +30,12 @@
     <ul>
         {% for value in selectedUsers.values() %}
         <li>{{ value }} <br>
+                {% if value != name %}
                     <form method="POST" action="/matching">
                         <input type="hidden" name="rmUser" value="{{value}}">
                         <input type="submit" value="Remove User" name="rmUser_button">
                     </form>
+                {% endif %}
         </li>
         {% endfor %}
     </ul>

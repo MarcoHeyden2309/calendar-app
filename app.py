@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, request, current_app, g
+from flask import Flask, render_template, redirect, url_for, request, current_app, g, flash
 
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField, DateTimeField, DateField, HiddenField
@@ -404,6 +404,7 @@ def match():
     form = SearchForm()
     
     foundUsers = []
+    noUserFound = True
     sameUser = False
     sameSelectedUser = False
     if not hasattr(current_app, 'selected_users'):
@@ -412,32 +413,25 @@ def match():
     if request.method == 'POST':
         if request.form.get('rmUser_button'):
             rmUser = request.form['rmUser']
-
-            for key, value in current_app.selected_users.items():
-                    if value == rmUser:
-                        del current_app.selected_users[key]
-                        break
+            if rmUser != current_user.username:
+                for key, value in current_app.selected_users.items():
+                        if value == rmUser:
+                            del current_app.selected_users[key]
+                            break
         elif request.form.get('addUser_button'):
             foundUsers = User.query.filter_by(username=request.form['username']).first()
             if foundUsers:
+                noUserFound = True
                 if foundUsers.id == current_user.id:
                     sameUser = True
                 if current_app.selected_users.get(str(foundUsers.id)) != None:
                     sameSelectedUser = True           
-          
-    '''
-    if form.validate_on_submit():
-        foundUsers = User.query.filter_by(username=form.InputString.data).first()
-        
-        if foundUsers:
-            if foundUsers.id == current_user.id:
-                sameUser = True
-            if current_app.selected_users.get(str(foundUsers.id)) != None:
-                sameSelectedUser = True
-    '''
+            else:
+                noUserFound = False
+
 
   
-    return render_template('matching_algorithm.html', form = form, sameUser = sameUser, foundUsers = foundUsers, sameSelectedUser = sameSelectedUser, selectedUsers = current_app.selected_users, name = name)
+    return render_template('matching_algorithm.html', form = form, sameUser = sameUser, foundUsers = foundUsers, sameSelectedUser = sameSelectedUser, selectedUsers = current_app.selected_users, name = name, noUserFound=noUserFound)
 
 
 @ app.route('/add_selected_user/<id>/<name>', methods=['GET', 'POST'])
@@ -520,8 +514,8 @@ def signup():
                         email=form.email.data, password=hashed_password)
         db.session.add(new_user)
         db.session.commit()
-
-        return '<h1>New user has been created!</h1>'
+        flash("You have successfully signed up! Please login to continue.")
+        return redirect('/login')
         # return '<h1>' + form.username.data + ' ' + form.email.data + ' ' + form.password.data + '</h1>'
 
     return render_template('signup.html', form=form, name = name)
