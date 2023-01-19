@@ -2,8 +2,7 @@
 {% extends "navigation.html" %}
 {% block content %}
 
-    {% set foundUserArray = [] %}
-
+<!--
     <form action="/matching" method="POST">
         {{ form.hidden_tag() }}
         {{form.InputString.label}}
@@ -12,7 +11,11 @@
 
 
     </form>
-
+    -->
+                    <form method="POST" action="/matching">
+                    <input type="text" name="username">
+                    <input type="submit" value="Add User" name="addUser_button">
+                    </form>
 
 
     {% if not foundUsers %}
@@ -35,14 +38,25 @@
 
     <ul>
         {% for value in selectedUsers.values() %}
-        <li>{{ value }}</li>
+        <li>{{ value }} <br>
+                    <form method="POST" action="/matching">
+                        <input type="hidden" name="rmUser" value="{{value}}">
+                        <input type="submit" value="Remove User" name="rmUser_button">
+                    </form>
+        </li>
         {% endfor %}
     </ul>
 
+    {% if selectedUsers|length > 1 %}
         <button type="button" onclick="location.href='/matching/asked'">
             find common timeslots
         </button>
-
+    {% else %}
+        <button type="button" disabled onclick="location.href='/matching/asked'">
+            find common timeslots
+        </button>
+        <p>Select at least another user</p>
+    {% endif %}
 
 
 {% endblock %}

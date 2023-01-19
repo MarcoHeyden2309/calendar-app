@@ -396,17 +396,36 @@ def confirm(appId, confirm):
 @ app.route('/matching', methods=['GET', 'POST'])
 @ login_required
 def match():
-    #slots = find_available_time_slots()
+    if current_user.is_authenticated:
+        name = current_user.username
+    else:
+        name = None  
+    
     form = SearchForm()
     
     foundUsers = []
     sameUser = False
     sameSelectedUser = False
     if not hasattr(current_app, 'selected_users'):
-        current_app.selected_users = {5: 'oliver', 6: 'marco2'}
+        current_app.selected_users = {current_user.id: current_user.username}
 
-    
-    
+    if request.method == 'POST':
+        if request.form.get('rmUser_button'):
+            rmUser = request.form['rmUser']
+
+            for key, value in current_app.selected_users.items():
+                    if value == rmUser:
+                        del current_app.selected_users[key]
+                        break
+        elif request.form.get('addUser_button'):
+            foundUsers = User.query.filter_by(username=request.form['username']).first()
+            if foundUsers:
+                if foundUsers.id == current_user.id:
+                    sameUser = True
+                if current_app.selected_users.get(str(foundUsers.id)) != None:
+                    sameSelectedUser = True           
+          
+    '''
     if form.validate_on_submit():
         foundUsers = User.query.filter_by(username=form.InputString.data).first()
         
@@ -415,11 +434,10 @@ def match():
                 sameUser = True
             if current_app.selected_users.get(str(foundUsers.id)) != None:
                 sameSelectedUser = True
-
-    
+    '''
 
   
-    return render_template('matching_algorithm.html', form = form, sameUser = sameUser, foundUsers = foundUsers, sameSelectedUser = sameSelectedUser, selectedUsers = current_app.selected_users)
+    return render_template('matching_algorithm.html', form = form, sameUser = sameUser, foundUsers = foundUsers, sameSelectedUser = sameSelectedUser, selectedUsers = current_app.selected_users, name = name)
 
 
 @ app.route('/add_selected_user/<id>/<name>', methods=['GET', 'POST'])
@@ -435,7 +453,10 @@ def add_selected_user(id, name):
 @ app.route('/matching/asked', methods=['GET', 'POST'])
 @ login_required
 def ask():
-    
+    if current_user.is_authenticated:
+        name = current_user.username
+    else:
+        name = None      
     cureentTime = datetime.now()
     idArray = list(current_app.selected_users.keys())
     time_slots = find_available_time_slots(idArray, cureentTime)
@@ -459,7 +480,7 @@ def ask():
               
         print("slot-title "+str(type(slot)))
         return redirect('/dashboard')
-    return render_template('select_common_slot.html', foundSlots = time_slots)
+    return render_template('select_common_slot.html', foundSlots = time_slots, name = name)
 
 
 
