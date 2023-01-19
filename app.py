@@ -490,9 +490,7 @@ def ask():
         new_appointment = Appointment(time_start=slot, time_end=(datetime.strptime(slot, "%Y-%m-%d %H:%M:%S")+timedelta(minutes=30)), title=title, creatorId=current_user.id)
         db.session.add(new_appointment)
         db.session.commit()
-        new_participation1 = Participation(
-        userId=current_user.id, appointmentId=new_appointment.id, confirmed=2)
-        db.session.add(new_participation1)
+
         for id in idArray:
             new_participation2 = Participation(
             userId=id, appointmentId=new_appointment.id, confirmed=0)
@@ -501,6 +499,7 @@ def ask():
         db.session.commit()  
               
         print("slot-title "+str(type(slot)))
+        flash("You have successfully created an appointment")
         return redirect('/dashboard')
     return render_template('select_common_slot.html', foundSlots = time_slots, name = name)
 

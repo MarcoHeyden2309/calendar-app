@@ -11,7 +11,15 @@
 {% set i = namespace(number = 0) %}
 
 
-
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-info">
+        <h2>{{ message }}</h2>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
 
 <form action="/dashboard" method="POST">
     {{ dateform.hidden_tag() }}
@@ -57,9 +65,9 @@
                 {% if confirmations[app.id][0] ==2 %}
                 <td style="background-color: green;">{{ app.title}} <br>
                     Date:{{ app.time_start.day }}/{{app.time_start.month}}/{{app.time_start.year}} <br>
-                    Heure: {{app.time_start.time()}} - {{app.time_end.time()}} 
-                    number: {{i.number}}
-                    bool: {{confirmations[i.number]}}
+                    Hour: {{app.time_start.time()}} - {{app.time_end.time()}} <br>
+                    Number of invited participants: {{confirmations[app.id][1]}} <br>
+                    Number of confirmed participants: {{confirmations[app.id][2]}}
                     
                     {% if userId == app.creatorId %}
                     <button onclick="window.location.href='/remove/{{app.id}}';">Delete Appointment</button>
@@ -72,9 +80,10 @@
                 {% elif confirmations[app.id][0]==0 %}
                  <td style="background-color:  rgba(255, 157, 0, 0.253);">{{ app.title}} <br>
                     Date:{{ app.time_start.day }}/{{app.time_start.month}}/{{app.time_start.year}} <br>
-                    Heure: {{app.time_start.time()}} - {{app.time_end.time()}} 
-                    number: {{i.number}}
-                    bool: {{confirmations[i.number]}}
+                    Hour: {{app.time_start.time()}} - {{app.time_end.time()}} <br>
+                    Number of invited participants: {{confirmations[app.id][1]}} <br>
+                    Number of confirmed participants: {{confirmations[app.id][2]}}
+
                     <br>
                     {% if userId != app.creatorId %}
                         <button onclick="window.location.href='/confirm/{{app.id}}/2';">Confirm</button>
@@ -93,9 +102,9 @@
                 {% elif confirmations[app.id][0]==1 %}
                 <td style="background-color:  rgba(255, 0, 191, 0.253);">{{ app.title}} <br>
                     Date:{{ app.time_start.day }}/{{app.time_start.month}}/{{app.time_start.year}} <br>
-                    Heure: {{app.time_start.time()}} - {{app.time_end.time()}}
-                    number: {{i.number}}
-                    bool: {{confirmations[i.number]}}
+                    Hour: {{app.time_start.time()}} - {{app.time_end.time()}} <br>
+                    Number of invited participants: {{confirmations[app.id][1]}} <br>
+                    Number of confirmed participants: {{confirmations[app.id][2]}}
                     <br>
                     {% if userId != app.creatorId %}
                     <button onclick="window.location.href='/confirm/{{app.id}}/2';">Confirm</button>

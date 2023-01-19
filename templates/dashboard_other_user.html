@@ -5,7 +5,7 @@
     </style>
 
     {% set foundAppointment = namespace(found=False) %}
-    {% set i = namespace(number = 0) %}
+  
 
     <form action="/user/{{otherUserId}}" method="POST">
 
@@ -50,30 +50,29 @@
                                 {% if confirmations[app.id][0] ==2 %}
                                     <td style="background-color: green;">{{ app.title}} <br>
                                         Date:{{ app.time_start.day }}/{{app.time_start.month}}/{{app.time_start.year}} <br>
-                                        Heure: {{app.time_start.time()}} - {{app.time_end.time()}}
-                                        number: {{i.number}}
-                                        bool: {{confirmations[i.number]}}
+                                        Heure: {{app.time_start.time()}} - {{app.time_end.time()}} <br>
+                                        Number of invited participants: {{confirmations[app.id][1]}} <br>
+                                        Number of confirmed participants: {{confirmations[app.id][2]}}
                                     </td>
 
-                                    {% set i.number = i.number+1 %}
+                                    
 
                                 {% elif confirmations[app.id][0]==0 %}
                                     <td style="background-color:  rgba(255, 157, 0, 0.253);">{{ app.title}} <br>
                                         Date:{{ app.time_start.day }}/{{app.time_start.month}}/{{app.time_start.year}} <br>
-                                        Heure: {{app.time_start.time()}} - {{app.time_end.time()}}
-                                        number: {{i.number}}
-                                        bool: {{confirmations[i.number]}}
-
-                                        {% set i.number = i.number+1 %}
+                                        Heure: {{app.time_start.time()}} - {{app.time_end.time()}} <br>
+                                        Number of invited participants: {{confirmations[app.id][1]}} <br>
+                                        Number of confirmed participants: {{confirmations[app.id][2]}}
                                     </td>
                                 {% elif confirmations[app.id][0]==1 %}
                                     <td style="background-color:  rgba(255, 0, 191, 0.253);">{{ app.title}} <br>
                                         Date:{{ app.time_start.day }}/{{app.time_start.month}}/{{app.time_start.year}} <br>
-                                        Heure: {{app.time_start.time()}} - {{app.time_end.time()}}
-                                        number: {{i.number}}
-                                        bool: {{confirmations[i.number]}}
+                                        Heure: {{app.time_start.time()}} - {{app.time_end.time()}} <br>
+                                        Number of invited participants: {{confirmations[app.id][1]}} <br>
+                                        Number of confirmed participants: {{confirmations[app.id][2]}}
+                                        
                                     
-                                        {% set i.number = i.number+1 %}
+                                        
                                     </td>
 
                                 {% endif %}
