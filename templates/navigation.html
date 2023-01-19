@@ -105,8 +105,11 @@
         <ul>
             <li><a href="/">Home</a></li>
             <li><a href="/dashboard">Dashboard</a></li>
+            {% if name == None %}
             <li><a href="/login">Login</a></li>
+            {% else %}
             <li><a href="/logout">Logout</a></li>
+            {% endif %}
         </ul>
         {% if not name == None %}
             <div id="username">

@@ -10,7 +10,7 @@
     {% endfor %}
     {% endif %}
     {% endwith %}
-
+        {% if name == None %}
 
             <form action="/login" method="POST">
                 {{ form.hidden_tag() }}
@@ -31,6 +31,9 @@
             <button type="button" onclick="location.href='/signup'">
                         Sign Up
             </button>
+            {% else %}
+            <h2> You are already logged in. To login with other credentials or to sign up, you must first logout!</h2>
+            {% endif %}
 {% endblock %}
 
 

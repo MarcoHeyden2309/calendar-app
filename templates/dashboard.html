@@ -54,17 +54,22 @@
 
             {% if app.time_start.date() == day[1].date() and app.time_start.time() == time.time() %}
             {% set foundAppointment.found = True %}
-                {% if confirmations[app.id] %}
+                {% if confirmations[app.id][0] ==2 %}
                 <td style="background-color: green;">{{ app.title}} <br>
                     Date:{{ app.time_start.day }}/{{app.time_start.month}}/{{app.time_start.year}} <br>
                     Heure: {{app.time_start.time()}} - {{app.time_end.time()}} 
                     number: {{i.number}}
                     bool: {{confirmations[i.number]}}
+                    
+                    {% if userId == app.creatorId %}
+                    <button onclick="window.location.href='/remove/{{app.id}}';">Delete Appointment</button>
+                    
+                    {% endif %}
                 </td>
 
                     {% set i.number = i.number+1 %}
                     
-                {% elif not confirmations[app.id] %}
+                {% elif confirmations[app.id][0]==0 %}
                  <td style="background-color:  rgba(255, 157, 0, 0.253);">{{ app.title}} <br>
                     Date:{{ app.time_start.day }}/{{app.time_start.month}}/{{app.time_start.year}} <br>
                     Heure: {{app.time_start.time()}} - {{app.time_end.time()}} 
@@ -77,7 +82,33 @@
                     {% endif %}
                         <button onclick="window.location.href='/confirm/{{app.id}}/1';">Decline</button>
                     
+                    {% if userId == app.creatorId %}
+                    <button onclick="window.location.href='/remove/{{app.id}}';">Delete Appointment</button>
                     
+                    {% endif %}
+
+                    {% set i.number = i.number+1 %}
+                </td>
+
+                {% elif confirmations[app.id][0]==1 %}
+                <td style="background-color:  rgba(255, 0, 191, 0.253);">{{ app.title}} <br>
+                    Date:{{ app.time_start.day }}/{{app.time_start.month}}/{{app.time_start.year}} <br>
+                    Heure: {{app.time_start.time()}} - {{app.time_end.time()}}
+                    number: {{i.number}}
+                    bool: {{confirmations[i.number]}}
+                    <br>
+                    {% if userId != app.creatorId %}
+                    <button onclick="window.location.href='/confirm/{{app.id}}/2';">Confirm</button>
+                
+                    {% endif %}
+
+                    {% if userId == app.creatorId %}
+                    <button onclick="window.location.href='/remove/{{app.id}}';">Delete Appointment</button>
+                    
+                    {% endif %}
+                    
+                
+                
                     {% set i.number = i.number+1 %}
                 </td>
 

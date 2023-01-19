@@ -106,6 +106,23 @@ class SlotForm(FlaskForm):
     title = StringField('Title')
     submit = SubmitField('Select this Timeslot')
 
+def remove_appointment(appointment_id):
+    # Get all participation for the appointment
+    participations = Participation.query.filter_by(appointmentId=appointment_id).all()
+
+    # Delete all participations for the appointment
+    for participation in participations:
+        db.session.delete(participation)
+
+    # Get the appointment with the given ID
+    appointment = Appointment.query.get(appointment_id)
+
+    # Delete the appointment
+    db.session.delete(appointment)
+
+    # Commit the changes to the database
+    db.session.commit()
+
 
 
 
@@ -166,12 +183,16 @@ def check_confirmation(appoId):
     result = {}
     
     for appointment in appoId:
-        participations = Participation.query.filter( Participation.appointmentId == appointment, Participation.confirmed !=2).all()
+        participations_number = Participation.query.filter( Participation.appointmentId == appointment).all()
+        participations_accepted = Participation.query.filter( Participation.appointmentId == appointment, Participation.confirmed ==2).all()
+        participations_declined = Participation.query.filter( Participation.appointmentId == appointment, Participation.confirmed ==1).all()
         #print(str(Participation.query.filter(Participation.confirmed != 2, Participation.appointmentId == appointment.id).statement))
-        if len(participations) > 0:
-            result.update({appointment: False})
+        if len(participations_accepted) == len(participations_number):
+            result.update({appointment:[2,len(participations_number), len(participations_accepted)]})
+        elif len(participations_declined) == (len(participations_number)-1):
+            result.update({appointment: [1, len(participations_number), len(participations_accepted)]})
         else:
-            result.update({appointment: True})
+            result.update({appointment: [0, len(participations_number), len(participations_accepted)]})
     
     return result
 
@@ -390,6 +411,13 @@ def confirm(appId, confirm):
     participation.confirmed = int(confirm)
     db.session.commit()
 
+    return redirect('/dashboard')
+
+@ app.route('/remove/<appId>', methods=['GET'])
+@ login_required
+def remove_app(appId):
+    print("rmid "+str(appId))
+    remove_appointment(int(appId))
     return redirect('/dashboard')
 
 
