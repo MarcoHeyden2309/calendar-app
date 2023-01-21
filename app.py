@@ -4,6 +4,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField, DateTimeField, DateField, HiddenField
 from wtforms.validators import InputRequired, Email, Length, DataRequired
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import or_
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from datetime import datetime, date, timedelta
@@ -14,8 +15,8 @@ from mysql.connector import connect
 app = Flask(__name__)
 
 app.config['SECRET_KEY'] = 'secret'
-#app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///myDB.db'
-#app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///myDB.db'
+# app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://marco:@localhost/calendardb'
 
@@ -92,9 +93,11 @@ class AppointmentTitle(FlaskForm):
     title = StringField('Title', validators=[InputRequired()])
     submit = SubmitField("Submit")
 
+
 class AppointmentConfirmation(FlaskForm):
     confirmation = BooleanField("Do you want to confirm the appointment?")
     submit = SubmitField("Submit")
+
 
 class AppointmentForm(FlaskForm):
     date = HiddenField()
@@ -102,13 +105,16 @@ class AppointmentForm(FlaskForm):
     userId = HiddenField()
     submit = SubmitField("Prendre rendez-vous")
 
+
 class SlotForm(FlaskForm):
     title = StringField('Title')
     submit = SubmitField('Select this Timeslot')
 
+
 def remove_appointment(appointment_id):
     # Get all participation for the appointment
-    participations = Participation.query.filter_by(appointmentId=appointment_id).all()
+    participations = Participation.query.filter_by(
+        appointmentId=appointment_id).all()
 
     # Delete all participations for the appointment
     for participation in participations:
@@ -124,11 +130,10 @@ def remove_appointment(appointment_id):
     db.session.commit()
 
 
-
-
 def find_available_time_slots(user_ids, current_time):
     # retrieve all appointments for the given users
-    participations = Participation.query.filter(Participation.userId.in_(user_ids)).all()
+    participations = Participation.query.filter(
+        Participation.userId.in_(user_ids)).all()
 
     # create a list of busy time slots for each user
     busy_slots = {}
@@ -138,17 +143,19 @@ def find_available_time_slots(user_ids, current_time):
     # populate the busy slots for each user
     for participation in participations:
         for user_id in user_ids:
-            if participation.userId == user_id and participation.confirmed==1:
-                appointment=Appointment.query.filter_by(id=participation.appointmentId).first()
-                busy_slots[user_id].append((appointment.time_start, appointment.time_end))
+            if participation.userId == user_id and participation.confirmed == 1:
+                appointment = Appointment.query.filter_by(
+                    id=participation.appointmentId).first()
+                busy_slots[user_id].append(
+                    (appointment.time_start, appointment.time_end))
 
     # initialize the available time slots list
     available_slots = []
 
     # start checking time slots from the current time
-    
+
     current_time = current_time.replace(microsecond=0, second=0)
-    if current_time.minute > 0 and current_time.minute <=30:
+    if current_time.minute > 0 and current_time.minute <= 30:
         current_time = current_time.replace(minute=30)
     elif current_time.minute > 30:
         current_time = current_time.replace(minute=0, hour=current_time.hour+1)
@@ -162,7 +169,7 @@ def find_available_time_slots(user_ids, current_time):
                     break
             if not all_available:
                 break
-        
+
         # if all users are available, add the current time slot to the list
         if all_available:
             available_slots.append(current_time)
@@ -170,42 +177,44 @@ def find_available_time_slots(user_ids, current_time):
         # increment the current time by 30 minutes
         current_time += timedelta(minutes=30)
         current_time = current_time.replace(microsecond=0, second=0)
-        if current_time.minute > 0 and current_time.minute <=30:
+        if current_time.minute > 0 and current_time.minute <= 30:
             current_time = current_time.replace(minute=30)
         elif current_time.minute > 30:
-            current_time = current_time.replace(minute=0, hour=current_time.hour+1)
+            current_time = current_time.replace(
+                minute=0, hour=current_time.hour+1)
 
     return available_slots
 
 
-
 def check_confirmation(appoId):
     result = {}
-    
+
     for appointment in appoId:
-        participations_number = Participation.query.filter( Participation.appointmentId == appointment).all()
-        participations_accepted = Participation.query.filter( Participation.appointmentId == appointment, Participation.confirmed ==2).all()
-        participations_declined = Participation.query.filter( Participation.appointmentId == appointment, Participation.confirmed ==1).all()
-        #print(str(Participation.query.filter(Participation.confirmed != 2, Participation.appointmentId == appointment.id).statement))
+        participations_number = Participation.query.filter(
+            Participation.appointmentId == appointment).all()
+        participations_accepted = Participation.query.filter(
+            Participation.appointmentId == appointment, Participation.confirmed == 2).all()
+        participations_declined = Participation.query.filter(
+            Participation.appointmentId == appointment, Participation.confirmed == 1).all()
+        # print(str(Participation.query.filter(Participation.confirmed != 2, Participation.appointmentId == appointment.id).statement))
         if len(participations_accepted) == len(participations_number):
-            result.update({appointment:[2,len(participations_number), len(participations_accepted)]})
+            result.update(
+                {appointment: [2, len(participations_number), len(participations_accepted)]})
         elif len(participations_declined) == (len(participations_number)-1):
-            result.update({appointment: [1, len(participations_number), len(participations_accepted)]})
+            result.update(
+                {appointment: [1, len(participations_number), len(participations_accepted)]})
         else:
-            result.update({appointment: [0, len(participations_number), len(participations_accepted)]})
-    
+            result.update(
+                {appointment: [0, len(participations_number), len(participations_accepted)]})
+
     return result
-
-
-
-
 
 
 def getWeekdays(firstDay):
     weekdays = []
     for i in range(7):
         currentDay = firstDay + timedelta(days=(i))
-        
+
         weekdays.append([currentDay.strftime('%A'), currentDay])
     return weekdays
 
@@ -214,12 +223,13 @@ def get_times(debut, intervalle):
 
     result = []
     addition = 1440/intervalle
-    
+
     i = 0
     for i in range(int(addition)):
         result.append(debut + timedelta(minutes=(i)*intervalle))
 
     return result
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -227,13 +237,11 @@ def load_user(user_id):
     user = User.query.get(user_id)
     return user
 
+
 @app.before_request
 def before_request():
     g.current_user = current_user
-    #g.selected_users = []
-
-
-
+    # g.selected_users = []
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -242,19 +250,19 @@ def index():
     if current_user.is_authenticated:
         name = current_user.username
     else:
-        name = None    
+        name = None
     form = SearchForm()
     foundUsers = []
     noUser = False
     currentuserId = current_user.id
     if form.validate_on_submit():
         foundUsers = User.query.filter_by(username=form.InputString.data).all()
-        if len(foundUsers) == 0: 
+        if len(foundUsers) == 0:
             noUser = True
         else:
             noUser = False
 
-    return render_template('index.html', form=form, foundUsers=foundUsers, noUser=noUser, currentuserId = currentuserId, name = name)
+    return render_template('index.html', form=form, foundUsers=foundUsers, noUser=noUser, currentuserId=currentuserId, name=name)
 
 
 @app.route('/userorg/<id>', methods=['GET', 'POST'])
@@ -264,26 +272,23 @@ def get_user_calender2(id):
     if current_user.is_authenticated:
         name = current_user.username
     else:
-        name = None      
+        name = None
     if dateform.validate_on_submit():
-        ###SelectedDate = dateform.start_date.data
+        # SelectedDate = dateform.start_date.data
         SelectedDate = datetime(
             dateform.start_date.data.year, dateform.start_date.data.month, dateform.start_date.data.day, 2, 2, 00)
-        
+
     else:
         SelectedDate = datetime.today()
-        
-    weekdays = getWeekdays(SelectedDate)
-    
 
+    weekdays = getWeekdays(SelectedDate)
 
     times = get_times(datetime(2020, 1, 1, 00, 00, 00), 30)
     time_start_plus_7 = SelectedDate + timedelta(days=7)
     appointments = Appointment.query.filter(
         Appointment.creatorId == id, Appointment.time_start >= SelectedDate, Appointment.time_end < time_start_plus_7).all()
-    
 
-    return render_template('dashboard2.html', appointments=appointments, dateform=dateform, userId=id, weekdays=weekdays, times=times, name = name)
+    return render_template('dashboard2.html', appointments=appointments, dateform=dateform, userId=id, weekdays=weekdays, times=times, name=name)
 
 
 @app.route('/user/<id>', methods=['GET', 'POST'])
@@ -292,42 +297,57 @@ def get_user_calender(id):
     print("userid:"+id)
     dateform = DateSelection()
     confirm_appoinment = AppointmentConfirmation()
+
     if current_user.is_authenticated:
         name = current_user.username
     else:
-        name = None  
+        name = None
     if dateform.validate_on_submit():
-        ###SelectedDate = dateform.start_date.data
+        # SelectedDate = dateform.start_date.data
         SelectedDate = datetime(
             dateform.start_date.data.year, dateform.start_date.data.month, dateform.start_date.data.day, 2, 2, 00)
-        
+
     else:
         SelectedDate = datetime.today()
-        
+
     weekdays = getWeekdays(SelectedDate)
 
     current_date = datetime.now()
+
     current_time = datetime.now().time()
     times = get_times(datetime(2020, 1, 1, 00, 00, 00), 30)
     time_start_plus_7 = SelectedDate + timedelta(days=7)
-    appointments_id = [row.appointmentId for row in Participation.query.filter(Participation.userId==current_user.id).order_by(Participation.id).all()]
-    
+    appID_usID_current_user = [[row.appointmentId, row.userId] for row in Participation.query.filter(
+        Participation.userId == current_user.id).order_by(Participation.id).all()]
+    appID_usID_other_user = [[row.appointmentId, row.userId] for row in Participation.query.filter(
+        Participation.userId == id).order_by(Participation.id).all()]
 
-    
+    appID_usID_other_user = [x for x in appID_usID_other_user if x[0]
+                             not in [y[0] for y in appID_usID_current_user]]
+    print("appID_usID_other_user "+str(appID_usID_other_user))
+
+    appID_usID_current_user.extend(appID_usID_other_user)
+    appID_usID = appID_usID_current_user
+    appointments_id = [inner_list[0] for inner_list in appID_usID]
+
+    appID_usID_map = dict(appID_usID)
+    print(str(appID_usID_map))
+    print(str(appID_usID))
+    print("cureent: "+str(appID_usID_current_user))
+    print("other: "+str(appID_usID_other_user))
     appointments = Appointment.query.filter(
         Appointment.id.in_(appointments_id), Appointment.time_start >= SelectedDate, Appointment.time_end < time_start_plus_7).all()
-    
-    participations = Participation.query.filter( Participation.appointmentId.in_(appointments_id)).order_by(Participation.id).all()
+
+    participations = Participation.query.filter(Participation.appointmentId.in_(
+        appointments_id)).order_by(Participation.id).all()
     for part in participations:
-        print(str(part.confirmed))        
-    
+        print(str(part.confirmed))
+
     confirmations = check_confirmation(appointments_id)
     print("Confirmations: "+str(confirmations))
     print("appointments: "+str(appointments))
 
-
-    return render_template('dashboard_other_user.html', appointments=appointments,confirmations = confirmations, dateform=dateform, otherUserId=id, weekdays=weekdays, times=times, confirm_appoinment = confirm_appoinment, current_date=current_date, current_time=current_time, name = name)
-
+    return render_template('dashboard_other_user.html', appointments=appointments, confirmations=confirmations, dateform=dateform, otherUserId=id, weekdays=weekdays, times=times, confirm_appoinment=confirm_appoinment, current_date=current_date, current_time=current_time, name=name, appID_usID_map=appID_usID_map, current_user_id=current_user.id)
 
 
 @ app.route('/appointment/<date>/<time>/<id>', methods=['GET', 'POST'])
@@ -335,11 +355,11 @@ def get_user_calender(id):
 def make_appointment(date, time, id):
     titleForm = AppointmentTitle()
     date_obj = datetime.strptime(date+" "+time, "%Y-%m-%d %H:%M:%S")
-    
+
     if current_user.is_authenticated:
         name = current_user.username
     else:
-        name = None  
+        name = None
 
     if titleForm.validate_on_submit():
         new_appointment = Appointment(time_start=date_obj, time_end=(
@@ -353,13 +373,11 @@ def make_appointment(date, time, id):
         db.session.add(new_participation1)
         db.session.add(new_participation2)
         db.session.commit()
-        #flash("Votre rendez-vous a été pris avec succès! Il faut maintenant attendre la confirmation de l'autre participant.")
+        # flash("Votre rendez-vous a été pris avec succès! Il faut maintenant attendre la confirmation de l'autre participant.")
         return redirect('/user/'+id)
         # =datetime(year=date.year(), month=date.month(), day=date.day(), hour=time.hour(), minute=time.minute())
 
-    return render_template('confirmation.html', titleForm=titleForm, date=date, time=time, id=id, name = name)
-
-
+    return render_template('confirmation.html', titleForm=titleForm, date=date, time=time, id=id, name=name)
 
 
 @ app.route('/dashboard', methods=['GET', 'POST'])
@@ -370,48 +388,47 @@ def dashboard():
     if current_user.is_authenticated:
         name = current_user.username
     else:
-        name = None  
+        name = None
     if dateform.validate_on_submit():
-        ###SelectedDate = dateform.start_date.data
+        # SelectedDate = dateform.start_date.data
         SelectedDate = datetime(
             dateform.start_date.data.year, dateform.start_date.data.month, dateform.start_date.data.day, 2, 2, 00)
-        
+
     else:
         SelectedDate = datetime.today()
-        
-    weekdays = getWeekdays(SelectedDate)
 
+    weekdays = getWeekdays(SelectedDate)
 
     times = get_times(datetime(2020, 1, 1, 00, 00, 00), 30)
     time_start_plus_7 = SelectedDate + timedelta(days=7)
-    appointments_id = [row.appointmentId for row in Participation.query.filter(Participation.userId==current_user.id).order_by(Participation.id).all()]
-    
+    appointments_id = [row.appointmentId for row in Participation.query.filter(
+        Participation.userId == current_user.id).order_by(Participation.id).all()]
 
-    
     appointments = Appointment.query.filter(
         Appointment.id.in_(appointments_id), Appointment.time_start >= SelectedDate, Appointment.time_end < time_start_plus_7).all()
-    
-    participations = Participation.query.filter( Participation.appointmentId.in_(appointments_id)).order_by(Participation.id).all()
+
+    participations = Participation.query.filter(Participation.appointmentId.in_(
+        appointments_id)).order_by(Participation.id).all()
     for part in participations:
-        print(str(part.confirmed))        
-    
+        print(str(part.confirmed))
+
     confirmations = check_confirmation(appointments_id)
     print("Confirmations: "+str(confirmations))
     print("appointments: "+str(appointments))
 
-
-    return render_template('dashboard.html', appointments=appointments,confirmations = confirmations, dateform=dateform, userId=current_user.id, weekdays=weekdays, times=times, confirm_appoinment = confirm_appoinment, name = name)
-
+    return render_template('dashboard.html', appointments=appointments, confirmations=confirmations, dateform=dateform, userId=current_user.id, weekdays=weekdays, times=times, confirm_appoinment=confirm_appoinment, name=name)
 
 
 @ app.route('/confirm/<appId>/<confirm>', methods=['GET'])
 @ login_required
 def confirm(appId, confirm):
-    participation = Participation.query.filter(Participation.appointmentId==appId, Participation.userId==current_user.id).first()
+    participation = Participation.query.filter(
+        Participation.appointmentId == appId, Participation.userId == current_user.id).first()
     participation.confirmed = int(confirm)
     db.session.commit()
 
     return redirect('/dashboard')
+
 
 @ app.route('/remove/<appId>', methods=['GET'])
 @ login_required
@@ -427,10 +444,10 @@ def match():
     if current_user.is_authenticated:
         name = current_user.username
     else:
-        name = None  
-    
+        name = None
+
     form = SearchForm()
-    
+
     foundUsers = []
     noUserFound = True
     sameUser = False
@@ -443,23 +460,22 @@ def match():
             rmUser = request.form['rmUser']
             if rmUser != current_user.username:
                 for key, value in current_app.selected_users.items():
-                        if value == rmUser:
-                            del current_app.selected_users[key]
-                            break
+                    if value == rmUser:
+                        del current_app.selected_users[key]
+                        break
         elif request.form.get('addUser_button'):
-            foundUsers = User.query.filter_by(username=request.form['username']).first()
+            foundUsers = User.query.filter_by(
+                username=request.form['username']).first()
             if foundUsers:
                 noUserFound = True
                 if foundUsers.id == current_user.id:
                     sameUser = True
                 if current_app.selected_users.get(str(foundUsers.id)) != None:
-                    sameSelectedUser = True           
+                    sameSelectedUser = True
             else:
                 noUserFound = False
 
-
-  
-    return render_template('matching_algorithm.html', form = form, sameUser = sameUser, foundUsers = foundUsers, sameSelectedUser = sameSelectedUser, selectedUsers = current_app.selected_users, name = name, noUserFound=noUserFound)
+    return render_template('matching_algorithm.html', form=form, sameUser=sameUser, foundUsers=foundUsers, sameSelectedUser=sameSelectedUser, selectedUsers=current_app.selected_users, name=name, noUserFound=noUserFound)
 
 
 @ app.route('/add_selected_user/<id>/<name>', methods=['GET', 'POST'])
@@ -471,14 +487,13 @@ def add_selected_user(id, name):
     return redirect('/matching')
 
 
-
 @ app.route('/matching/asked', methods=['GET', 'POST'])
 @ login_required
 def ask():
     if current_user.is_authenticated:
         name = current_user.username
     else:
-        name = None      
+        name = None
     cureentTime = datetime.now()
     idArray = list(current_app.selected_users.keys())
     time_slots = find_available_time_slots(idArray, cureentTime)
@@ -486,45 +501,43 @@ def ask():
     if request.method == 'POST':
         title = request.form['title']
         slot = request.form['slot']
-        
-        new_appointment = Appointment(time_start=slot, time_end=(datetime.strptime(slot, "%Y-%m-%d %H:%M:%S")+timedelta(minutes=30)), title=title, creatorId=current_user.id)
+
+        new_appointment = Appointment(time_start=slot, time_end=(datetime.strptime(
+            slot, "%Y-%m-%d %H:%M:%S")+timedelta(minutes=30)), title=title, creatorId=current_user.id)
         db.session.add(new_appointment)
         db.session.commit()
 
         for id in idArray:
             new_participation2 = Participation(
-            userId=id, appointmentId=new_appointment.id, confirmed=0)
+                userId=id, appointmentId=new_appointment.id, confirmed=0)
             db.session.add(new_participation2)
-        
-        db.session.commit()  
-              
+
+        db.session.commit()
+
         print("slot-title "+str(type(slot)))
         flash("You have successfully created an appointment")
         return redirect('/dashboard')
-    return render_template('select_common_slot.html', foundSlots = time_slots, name = name)
+    return render_template('select_common_slot.html', foundSlots=time_slots, name=name)
 
 
-
-
-@ app.route('/login', methods=['GET','POST'])
+@ app.route('/login', methods=['GET', 'POST'])
 def login():
     form = LoginForm()
     if current_user.is_authenticated:
         name = current_user.username
     else:
-        name = None  
+        name = None
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data).first()
         if user:
             if check_password_hash(user.password, form.password.data):
                 login_user(user, remember=form.remember.data)
-                
-                
+
                 return redirect('/')
             else:
-                 return 'user '+ form.password.data
+                return 'user ' + form.password.data
 
-    return render_template('login.html', form=form, name = name)
+    return render_template('login.html', form=form, name=name)
 
 
 @ app.route('/signup', methods=['GET', 'POST'])
@@ -533,7 +546,7 @@ def signup():
     if current_user.is_authenticated:
         name = current_user.username
     else:
-        name = None  
+        name = None
     if form.validate_on_submit():
         hashed_password = generate_password_hash(
             form.password.data, method='sha256')
@@ -545,18 +558,16 @@ def signup():
         return redirect('/login')
         # return '<h1>' + form.username.data + ' ' + form.email.data + ' ' + form.password.data + '</h1>'
 
-    return render_template('signup.html', form=form, name = name)
+    return render_template('signup.html', form=form, name=name)
 
 
 @ app.route('/logout')
 @ login_required
 def logout():
     logout_user()
-   
+
     return redirect(url_for('index'))
 
 
 if __name__ == '__main__':
     app.run(debug=True)
-
-
