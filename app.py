@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, request, current_app, g, flash
+from flask import Flask, render_template, redirect, url_for, request, current_app, g, flash, session
 
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField, DateTimeField, DateField, HiddenField
@@ -143,7 +143,7 @@ def find_available_time_slots(user_ids, current_time):
     # populate the busy slots for each user
     for participation in participations:
         for user_id in user_ids:
-            if participation.userId == user_id and participation.confirmed == 1:
+            if participation.userId == user_id and participation.confirmed != 1:
                 appointment = Appointment.query.filter_by(
                     id=participation.appointmentId).first()
                 busy_slots[user_id].append(
@@ -231,6 +231,36 @@ def get_times(debut, intervalle):
     return result
 
 
+def get_user(SelectedDate, other_user_id):
+    time_start_plus_7 = SelectedDate + timedelta(days=7)
+    appID_usID_current_user = [[row.appointmentId, row.userId] for row in Participation.query.filter(
+        Participation.userId == current_user.id).order_by(Participation.id).all()]
+    appID_usID_other_user = [[row.appointmentId, row.userId] for row in Participation.query.filter(
+        Participation.userId == other_user_id).order_by(Participation.id).all()]
+
+    appID_usID_other_user = [x for x in appID_usID_other_user if x[0]
+                             not in [y[0] for y in appID_usID_current_user]]
+    print("appID_usID_other_user "+str(appID_usID_other_user))
+
+    appID_usID_current_user.extend(appID_usID_other_user)
+    appID_usID = appID_usID_current_user
+    appointments_id = [inner_list[0] for inner_list in appID_usID]
+
+    appID_usID_map = dict(appID_usID)
+    print(str(appID_usID_map))
+    print(str(appID_usID))
+    print("cureent: "+str(appID_usID_current_user))
+    print("other: "+str(appID_usID_other_user))
+    appointments = Appointment.query.filter(
+        Appointment.id.in_(appointments_id), Appointment.time_start >= SelectedDate, Appointment.time_end < time_start_plus_7).all()
+
+    participations = Participation.query.filter(Participation.appointmentId.in_(
+        appointments_id)).order_by(Participation.id).all()
+    for part in participations:
+        print(str(part.confirmed))
+    return [appointments, appointments_id, appID_usID_map]
+
+
 @login_manager.user_loader
 def load_user(user_id):
     # Retrieve the user object from the database using the user_id
@@ -302,6 +332,7 @@ def get_user_calender(id):
         name = current_user.username
     else:
         name = None
+
     if dateform.validate_on_submit():
         # SelectedDate = dateform.start_date.data
         SelectedDate = datetime(
@@ -316,33 +347,11 @@ def get_user_calender(id):
 
     current_time = datetime.now().time()
     times = get_times(datetime(2020, 1, 1, 00, 00, 00), 30)
-    time_start_plus_7 = SelectedDate + timedelta(days=7)
-    appID_usID_current_user = [[row.appointmentId, row.userId] for row in Participation.query.filter(
-        Participation.userId == current_user.id).order_by(Participation.id).all()]
-    appID_usID_other_user = [[row.appointmentId, row.userId] for row in Participation.query.filter(
-        Participation.userId == id).order_by(Participation.id).all()]
 
-    appID_usID_other_user = [x for x in appID_usID_other_user if x[0]
-                             not in [y[0] for y in appID_usID_current_user]]
-    print("appID_usID_other_user "+str(appID_usID_other_user))
-
-    appID_usID_current_user.extend(appID_usID_other_user)
-    appID_usID = appID_usID_current_user
-    appointments_id = [inner_list[0] for inner_list in appID_usID]
-
-    appID_usID_map = dict(appID_usID)
-    print(str(appID_usID_map))
-    print(str(appID_usID))
-    print("cureent: "+str(appID_usID_current_user))
-    print("other: "+str(appID_usID_other_user))
-    appointments = Appointment.query.filter(
-        Appointment.id.in_(appointments_id), Appointment.time_start >= SelectedDate, Appointment.time_end < time_start_plus_7).all()
-
-    participations = Participation.query.filter(Participation.appointmentId.in_(
-        appointments_id)).order_by(Participation.id).all()
-    for part in participations:
-        print(str(part.confirmed))
-
+    checkuser = get_user(SelectedDate, id)
+    appointments = checkuser[0]
+    appointments_id = checkuser[1]
+    appID_usID_map = checkuser[2]
     confirmations = check_confirmation(appointments_id)
     print("Confirmations: "+str(confirmations))
     print("appointments: "+str(appointments))
@@ -383,40 +392,50 @@ def make_appointment(date, time, id):
 @ app.route('/dashboard', methods=['GET', 'POST'])
 @ login_required
 def dashboard():
+    if not hasattr(current_app, 'username'):
+        current_app.otherUserId = current_user.username
+
+    if not hasattr(current_app, 'SelectedDate'):
+        current_app.SelectedDate = datetime.today()
+
     dateform = DateSelection()
     confirm_appoinment = AppointmentConfirmation()
+    otherUserId = current_user.id
+    foundUsers = []
+
     if current_user.is_authenticated:
         name = current_user.username
     else:
         name = None
-    if dateform.validate_on_submit():
-        # SelectedDate = dateform.start_date.data
-        SelectedDate = datetime(
-            dateform.start_date.data.year, dateform.start_date.data.month, dateform.start_date.data.day, 2, 2, 00)
 
-    else:
-        SelectedDate = datetime.today()
+    if request.method == 'POST':
+        if request.form.get('searchUser_button'):
+            current_app.otherUserId = request.form['username']
 
-    weekdays = getWeekdays(SelectedDate)
+        elif request.form.get('searchDate_button'):
+            date_string = request.form['date']
+            date_object = datetime.strptime(date_string, '%Y-%m-%d')
+            current_app.SelectedDate = date_object.replace(hour=00, minute=00)
+
+    weekdays = getWeekdays(current_app.SelectedDate)
+    foundUsers = User.query.filter_by(
+        username=current_app.otherUserId).all()
+    if foundUsers == []:
+        current_app.otherUserId = current_user.username
 
     times = get_times(datetime(2020, 1, 1, 00, 00, 00), 30)
-    time_start_plus_7 = SelectedDate + timedelta(days=7)
-    appointments_id = [row.appointmentId for row in Participation.query.filter(
-        Participation.userId == current_user.id).order_by(Participation.id).all()]
 
-    appointments = Appointment.query.filter(
-        Appointment.id.in_(appointments_id), Appointment.time_start >= SelectedDate, Appointment.time_end < time_start_plus_7).all()
-
-    participations = Participation.query.filter(Participation.appointmentId.in_(
-        appointments_id)).order_by(Participation.id).all()
-    for part in participations:
-        print(str(part.confirmed))
-
+    checkuser = get_user(current_app.SelectedDate, current_app.otherUserId)
+    appointments = checkuser[0]
+    appointments_id = checkuser[1]
+    appID_usID_map = checkuser[2]
+    current_date = datetime.now()
+    current_time = datetime.now().time()
     confirmations = check_confirmation(appointments_id)
     print("Confirmations: "+str(confirmations))
     print("appointments: "+str(appointments))
 
-    return render_template('dashboard.html', appointments=appointments, confirmations=confirmations, dateform=dateform, userId=current_user.id, weekdays=weekdays, times=times, confirm_appoinment=confirm_appoinment, name=name)
+    return render_template('dashboard.html', appointments=appointments, confirmations=confirmations, dateform=dateform, userId=current_user.id, weekdays=weekdays, times=times, confirm_appoinment=confirm_appoinment, name=name, appID_usID_map=appID_usID_map, current_date=current_date, current_time=current_time, otherUserId=otherUserId, foundUsers=foundUsers, SelectedDate=current_app.SelectedDate)
 
 
 @ app.route('/confirm/<appId>/<confirm>', methods=['GET'])
@@ -452,16 +471,18 @@ def match():
     noUserFound = True
     sameUser = False
     sameSelectedUser = False
-    if not hasattr(current_app, 'selected_users'):
-        current_app.selected_users = {current_user.id: current_user.username}
+    selected_users = 'selected_users_'+name
+    if not hasattr(current_app, selected_users):
+        setattr(current_app, selected_users, {
+                current_user.id: current_user.username})
 
     if request.method == 'POST':
         if request.form.get('rmUser_button'):
             rmUser = request.form['rmUser']
             if rmUser != current_user.username:
-                for key, value in current_app.selected_users.items():
+                for key, value in getattr(current_app, selected_users, {}).items():
                     if value == rmUser:
-                        del current_app.selected_users[key]
+                        del getattr(current_app, selected_users, {})[key]
                         break
         elif request.form.get('addUser_button'):
             foundUsers = User.query.filter_by(
@@ -470,20 +491,21 @@ def match():
                 noUserFound = True
                 if foundUsers.id == current_user.id:
                     sameUser = True
-                if current_app.selected_users.get(str(foundUsers.id)) != None:
+                if getattr(current_app, selected_users, {}).get(str(foundUsers.id)) != None:
                     sameSelectedUser = True
             else:
                 noUserFound = False
 
-    return render_template('matching_algorithm.html', form=form, sameUser=sameUser, foundUsers=foundUsers, sameSelectedUser=sameSelectedUser, selectedUsers=current_app.selected_users, name=name, noUserFound=noUserFound)
+    return render_template('matching_algorithm.html', form=form, sameUser=sameUser, foundUsers=foundUsers, sameSelectedUser=sameSelectedUser, selectedUsers=getattr(current_app, selected_users, {}), name=name, noUserFound=noUserFound)
 
 
 @ app.route('/add_selected_user/<id>/<name>', methods=['GET', 'POST'])
 @ login_required
 def add_selected_user(id, name):
-    current_app.selected_users[int(id)] = name
+    selected_users = 'selected_users_'+current_user.username
+    getattr(current_app, selected_users, {})[int(id)] = name
 
-    print(str(current_app.selected_users))
+    print(str(getattr(current_app, selected_users, {})))
     return redirect('/matching')
 
 
@@ -495,7 +517,8 @@ def ask():
     else:
         name = None
     cureentTime = datetime.now()
-    idArray = list(current_app.selected_users.keys())
+    selected_users = 'selected_users_'+current_user.username
+    idArray = list(getattr(current_app, selected_users, {}).keys())
     time_slots = find_available_time_slots(idArray, cureentTime)
     print(str(time_slots))
     if request.method == 'POST':
@@ -506,10 +529,15 @@ def ask():
             slot, "%Y-%m-%d %H:%M:%S")+timedelta(minutes=30)), title=title, creatorId=current_user.id)
         db.session.add(new_appointment)
         db.session.commit()
-
+        conf = 1
         for id in idArray:
+            if id == current_user.id:
+                conf = 2
+            else:
+                conf = 0
+
             new_participation2 = Participation(
-                userId=id, appointmentId=new_appointment.id, confirmed=0)
+                userId=id, appointmentId=new_appointment.id, confirmed=conf)
             db.session.add(new_participation2)
 
         db.session.commit()
@@ -564,6 +592,11 @@ def signup():
 @ app.route('/logout')
 @ login_required
 def logout():
+
+    selected_users = 'selected_users_'+current_user.username
+    if hasattr(current_app, selected_users):
+        delattr(current_app, selected_users)
+
     logout_user()
 
     return redirect(url_for('index'))

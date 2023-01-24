@@ -21,13 +21,27 @@
     {% endif %}
     {% endwith %}
 
-<form action="/dashboard" method="POST">
-    {{ dateform.hidden_tag() }}
-    {{dateform.start_date.label}}
-    {{ dateform.start_date() }}
-    {{ dateform.submit()}}
-
-
+    <form method="POST" action="/dashboard">
+        <input type="date" name="date" value={{ SelectedDate.strftime("%Y-%m-%d") }}>
+        <input type="submit" value="Select date" name="searchDate_button">
+    </form>
+    
+    <form method="POST" action="/dashboard">
+        <input type="text" name="username">
+        <input type="submit" value="Search user to book an appointment" name="searchUser_button">
+    </form>
+    <form method="POST" action="/dashboard">
+            <input type="hidden" name="username" value={{name}}>
+            <input type="submit" value="Make an appointment with myself" name="searchUser_button">
+    </form>
+    
+            {% if foundUsers != [] %}
+            {% for user in foundUsers %}
+            <p>The selected user is: {{user.username}}</p>
+            {% endfor %}
+            {% else %}
+            <p>No user found</p>
+            {% endif %}
     <button type="button" onclick="location.href='/matching'">Common slot Algorithm</button>
 
 
@@ -54,7 +68,17 @@
             {% for day in weekdays %}
 
             {% if appointments == [] %}
-            <td style="background-color: rgba(0, 123, 255, 0.1);"> </td>
+            <td style="background-color: rgba(0, 123, 255, 0.1);">
+            
+                {% if (day[1].date() > current_date.date() ) or (day[1].date()==current_date.date() and time.time() >
+                current_time) %}
+            
+                <button type="button" onclick="location.href='/appointment/{{day[1].date()}}/{{time.time()}}/{{otherUserId}}'">Make
+                    an
+                    appointment</button>
+                {% endif %}
+            
+            </td>
             {% else %}
 
 
@@ -62,8 +86,9 @@
 
             {% if app.time_start.date() == day[1].date() and app.time_start.time() == time.time() %}
             {% set foundAppointment.found = True %}
+                {% if appID_usID_map[app.id] == userId %}
                 {% if confirmations[app.id][0] ==2 %}
-                <td style="background-color: green;">{{ app.title}} <br>
+                <td style="background-color: green;"><h4>{{ app.title}}</h4> <br>
                     Date:{{ app.time_start.day }}/{{app.time_start.month}}/{{app.time_start.year}} <br>
                     Hour: {{app.time_start.time()}} - {{app.time_end.time()}} <br>
                     Number of invited participants: {{confirmations[app.id][1]}} <br>
@@ -78,17 +103,17 @@
                     {% set i.number = i.number+1 %}
                     
                 {% elif confirmations[app.id][0]==0 %}
-                 <td style="background-color:  rgba(255, 157, 0, 0.253);">{{ app.title}} <br>
+                 <td style="background-color:  rgba(255, 157, 0, 0.253);"><h4>{{ app.title}}</h4> <br>
                     Date:{{ app.time_start.day }}/{{app.time_start.month}}/{{app.time_start.year}} <br>
                     Hour: {{app.time_start.time()}} - {{app.time_end.time()}} <br>
                     Number of invited participants: {{confirmations[app.id][1]}} <br>
                     Number of confirmed participants: {{confirmations[app.id][2]}}
 
                     <br>
-                    {% if userId != app.creatorId %}
+                    
                         <button onclick="window.location.href='/confirm/{{app.id}}/2';">Confirm</button>
                    
-                    {% endif %}
+                    
                         <button onclick="window.location.href='/confirm/{{app.id}}/1';">Decline</button>
                     
                     {% if userId == app.creatorId %}
@@ -100,7 +125,7 @@
                 </td>
 
                 {% elif confirmations[app.id][0]==1 %}
-                <td style="background-color:  rgba(255, 0, 191, 0.253);">{{ app.title}} <br>
+                <td style="background-color:  rgba(255, 0, 191, 0.253);"><h4>{{ app.title}}</h4> <br>
                     Date:{{ app.time_start.day }}/{{app.time_start.month}}/{{app.time_start.year}} <br>
                     Hour: {{app.time_start.time()}} - {{app.time_end.time()}} <br>
                     Number of invited participants: {{confirmations[app.id][1]}} <br>
@@ -122,6 +147,17 @@
                 </td>
 
                 {% endif %}
+                {% else %}
+                        <td style="background-color:  rgba(144, 147, 179, 0.253);"><h4>{{ app.title}}</h4> <br>
+                            Date:{{ app.time_start.day }}/{{app.time_start.month}}/{{app.time_start.year}} <br>
+                            Heure: {{app.time_start.time()}} - {{app.time_end.time()}} <br>
+                            Number of invited participants: {{confirmations[app.id][1]}} <br>
+                            Number of confirmed participants: {{confirmations[app.id][2]}}
+                        
+                        
+                        
+                        </td>
+                {% endif %}
                 
 
             {% endif %}
@@ -132,7 +168,16 @@
             
 
             {% if not foundAppointment.found %}
-            <td style="background-color: rgba(0, 123, 255, 0.1);"> </td>
+            <td style="background-color: rgba(0, 123, 255, 0.1);">
+            
+                {% if (day[1].date() > current_date.date() ) or (day[1].date()==current_date.date() and time.time() >
+                current_time) %}
+            
+                <button type="button" onclick="location.href='/appointment/{{day[1].date()}}/{{time.time()}}/{{otherUserId}}'">Make
+                    an
+                    appointment</button>
+                {% endif %}
+            </td>
 
             {% endif %}
             {% set foundAppointment.found=False %}
