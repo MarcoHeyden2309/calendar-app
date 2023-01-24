@@ -18,18 +18,21 @@
     {% else %}
         
         {% if sameSelectedUser == False %}
+            {% if foundUsers !=[] %}
         <button type="button" onclick="location.href='/add_selected_user/{{foundUsers.id}}/{{foundUsers.username}}'">
             {{foundUsers.username}}
         </button>
+            {% endif %}
         {% else %}
         <h2>You already selected this user</h2>
         {% endif%}
     {% endif %}
 
 
-    <ul>
+    <ul class="selected-users-table">
         {% for value in selectedUsers.values() %}
-        <li>{{ value }} <br>
+        <li><h3 class="selected-users-table">{{ value }}</h3>
+             <br>
                 {% if value != name %}
                     <form method="POST" action="/matching">
                         <input type="hidden" name="rmUser" value="{{value}}">
@@ -48,7 +51,7 @@
         <button type="button" disabled onclick="location.href='/matching/asked'">
             find common timeslots
         </button>
-        <p>Select at least another user</p>
+        <h3>Select at least another user</h3>
     {% endif %}
 
 
