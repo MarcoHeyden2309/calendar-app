@@ -3,11 +3,11 @@
 
 
 {% block content %}
-    <h2>
-        Veuillez confirmer votre prise de rendez vous et inscrire le titre de vore rendez-vous
-        <br> Jour: {{date}}
-        <br> Heure {{time}}
-    </h2>
+    <h3>
+        Please confirm your appointment and choose a title
+        <br> Day: {{date}}
+        <br> Hour: {{time}}
+    </h3>
     <form action="/appointment/{{date}}/{{time}}/{{id}}" method="POST">
         {{ titleForm.hidden_tag() }}
         {{titleForm.title.label}}

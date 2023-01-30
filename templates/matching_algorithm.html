@@ -10,10 +10,10 @@
 
 
     {% if not noUserFound %}
-        <h2>Aucun utilisateur trouvé!</h2>
+        <h3>Aucun utilisateur trouvé!</h3>
 
     {% elif sameUser %}
-        <h2>You can not make an appointment with yourself</h2>
+        <h3>You can not make an appointment with yourself</h3>
 
     {% else %}
         
@@ -24,7 +24,7 @@
         </button>
             {% endif %}
         {% else %}
-        <h2>You already selected this user</h2>
+        <h3>You already selected this user</h3>
         {% endif%}
     {% endif %}
 

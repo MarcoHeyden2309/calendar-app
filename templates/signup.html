@@ -1,14 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "navigation.html" %}
+{% block content %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-</head>
-
-<body>
     <form action="/signup" method="POST">
         {{ form.hidden_tag() }}
         {{ form.username.label}}
@@ -18,6 +10,6 @@
         {{ form.password.label}}
         {{ form.password() }}
         {{ form.submit()}}
-</body>
 
-</html>
+
+        {% endblock %}
