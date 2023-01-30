@@ -38,11 +38,8 @@
             background-color: #3498DB;
         }
 
-        /* Form styles */
-        form {
-            margin: 20px 0;
-        }
-
+        
+        input[type="password" i],
         input[type='text'],
         input[type='date'] {
             padding: 12px 20px;
