@@ -33,6 +33,12 @@
             {% else %}
             <h3> You are already logged in. To login with other credentials or to sign up, you must first logout!</h3>
             {% endif %}
+            {% if failed_login == True %}
+            <div class="alert alert-danger">
+                Login failed. Please check your username and password and try again.
+            </div>
+            {% endif %}
+
 {% endblock %}
 
 
