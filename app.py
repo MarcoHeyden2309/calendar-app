@@ -11,10 +11,6 @@ from datetime import datetime, date, timedelta
 from flask_mysqldb import MySQL
 from mysql.connector import connect
 
-# Import the Flask class and create a Flask application object
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager, UserMixin
 
 app = Flask(__name__)
 
@@ -161,6 +157,54 @@ class AppointmentConfirmation(FlaskForm):
     confirmation = BooleanField("Do you want to confirm the appointment?")
     # A SubmitField for submitting the form
     submit = SubmitField("Submit")
+
+
+def new_appointment(slot, title, current_user, idArray):
+
+    # Create a new appointment object with the selected slot and title
+    slot_str = slot.strftime("%Y-%m-%d %H:%M:%S")
+    time_end = (datetime.strptime(
+        slot_str, "%Y-%m-%d %H:%M:%S") + timedelta(minutes=30))
+    new_appointment = Appointment(
+        time_start=slot, time_end=time_end, title=title, creatorId=current_user)
+
+    # Add the appointment to the database
+    db.session.add(new_appointment)
+    db.session.commit()
+
+    # initialise the variable
+    conf = 1
+
+    # Loop through the selected users
+    for id in idArray:
+        # If the selected user is the current user, set the confirmation status to 2
+        if id == current_user:
+            conf = 2
+        else:
+            conf = 0
+
+            # Create a new participation object with the user id, appointment id and confirmation status
+        new_participation2 = Participation(
+            userId=id, appointmentId=new_appointment.id, confirmed=conf)
+
+        # Add the participation to the database
+        db.session.add(new_participation2)
+
+        # Commit the changes to the database
+    db.session.commit()
+
+
+def signup_function(username, email, password):
+
+    # Hash password using sha256
+    hashed_password = generate_password_hash(
+        password, method='sha256')
+    # Create new user with given username, email and password
+    new_user = User(username=username,
+                    email=email, password=hashed_password)
+    # Add the new user to database
+    db.session.add(new_user)
+    db.session.commit()
 
 
 def remove_appointment(appointment_id):
@@ -326,9 +370,7 @@ def get_user(SelectedDate, other_user_id):
     # get participations for the appointments
     participations = Participation.query.filter(Participation.appointmentId.in_(
         appointments_id)).order_by(Participation.id).all()
-    # print confirmed status for each participation
-    for part in participations:
-        print(str(part.confirmed))
+
     # return appointments, appointment IDs, and appointment ID to user ID mapping
     return [appointments, appointments_id, appID_usID_map]
 
@@ -380,19 +422,10 @@ def make_appointment(date, time, id):
 
     # If the appointment title form has been submitted and is valid
     if titleForm.validate_on_submit():
-        # Create a new appointment with the given title, start time, and creator
-        new_appointment = Appointment(time_start=date_obj, time_end=(
-            date_obj + timedelta(minutes=30)), title=titleForm.title.data, creatorId=current_user.id)
-        db.session.add(new_appointment)
-        db.session.commit()
-        # Create two new participations for the current user and the other user
-        new_participation1 = Participation(
-            userId=current_user.id, appointmentId=new_appointment.id, confirmed=2)
-        new_participation2 = Participation(
-            userId=id, appointmentId=new_appointment.id, confirmed=0)
-        db.session.add(new_participation1)
-        db.session.add(new_participation2)
-        db.session.commit()
+        userArray = [current_user.id, id]
+        new_appointment(date_obj, titleForm.title.data,
+                        current_user.id, userArray)
+
         # Redirect to the dashboard
         return redirect('/dashboard')
 
@@ -584,7 +617,7 @@ def add_selected_user(id, name):
 
 @ app.route('/matching/asked', methods=['GET', 'POST'])
 @ login_required
-def ask():
+def select_slot():
     # Check if user is authenticated and set the name to the username of the current user
     if current_user.is_authenticated:
         name = current_user.username
@@ -614,34 +647,7 @@ def ask():
         # Get the selected slot for the appointment
         slot = request.form['slot']
 
-        # Create a new appointment object with the selected slot and title
-        new_appointment = Appointment(time_start=slot, time_end=(datetime.strptime(
-            slot, "%Y-%m-%d %H:%M:%S")+timedelta(minutes=30)), title=title, creatorId=current_user.id)
-
-        # Add the appointment to the database
-        db.session.add(new_appointment)
-        db.session.commit()
-
-        # initialise the variable
-        conf = 1
-
-        # Loop through the selected users
-        for id in idArray:
-            # If the selected user is the current user, set the confirmation status to 2
-            if id == current_user.id:
-                conf = 2
-            else:
-                conf = 0
-
-            # Create a new participation object with the user id, appointment id and confirmation status
-            new_participation2 = Participation(
-                userId=id, appointmentId=new_appointment.id, confirmed=conf)
-
-            # Add the participation to the database
-            db.session.add(new_participation2)
-
-        # Commit the changes to the database
-        db.session.commit()
+        new_appointment(slot, title, current_user.id, idArray)
 
         # Print the type of the slot
         print("slot-title "+str(type(slot)))
@@ -703,16 +709,9 @@ def signup():
         name = None
     # Validate sign up form on submit
     if form.validate_on_submit():
-        # Hash password using sha256
-        hashed_password = generate_password_hash(
-            form.password.data, method='sha256')
-        # Create new user with given username, email and password
-        new_user = User(username=form.username.data,
-                        email=form.email.data, password=hashed_password)
-        # Add the new user to database
-        db.session.add(new_user)
-        db.session.commit()
-        # Show success message after sign up
+        signup_function(form.username.data,
+                        form.email.data, form.password.data)
+
         flash("You have successfully signed up! Please login to continue.")
         # Redirect to login page
         return redirect('/login')
