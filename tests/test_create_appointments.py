@@ -128,15 +128,16 @@ with app.app_context():
         db.session.commit()
 
         # initialise the variable
-        conf = 1
-
+        # conf = 1
+        conf = random.sample([0, 2], 1)
         # Loop through the selected users
         for id in idArray:
             # If the selected user is the current user, set the confirmation status to 2
             if id == current_user:
                 conf = 2
             else:
-                conf = 0
+                # conf = 0
+                x = 0
 
                 # Create a new participation object with the user id, appointment id and confirmation status
             new_participation2 = Participation(
@@ -148,14 +149,22 @@ with app.app_context():
             # Commit the changes to the database
         db.session.commit()
 
+
+# this is the test code
+
+    # I select the users with id's that range from 1 to 100
     userid = list(range(1, 101))
+    # I select the date and time to noew
     curentTime = datetime.now()
+    # I call the find_available_time_slots() function, and ask it to find the next 2880 available slots
     result = find_available_time_slots(userid, curentTime, 2880)
+    # from the found slots, I randomly select 1000
     random_timestamps = random.sample(result, 1000)
+
     print(str(random_timestamps))
+
     # add the appointments to the database:
     i = 0
-
     for slot in random_timestamps:
         title = 'title'+str(i)
         new_appointment(slot, title, random.sample(userid, 1)[0], userid,)

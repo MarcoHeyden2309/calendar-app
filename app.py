@@ -159,6 +159,18 @@ class AppointmentConfirmation(FlaskForm):
     submit = SubmitField("Submit")
 
 
+def confirm_function(appId, confirm, current_user):
+    # Query the Participation table to get the relevant record
+    participation = Participation.query.filter(
+        Participation.appointmentId == appId, Participation.userId == current_user).first()
+
+    # Update the confirmation status of the appointment
+    participation.confirmed = int(confirm)
+
+    # Commit the changes to the database
+    db.session.commit()
+
+
 def new_appointment(slot, title, current_user, idArray):
 
     # Create a new appointment object with the selected slot and title
@@ -226,7 +238,7 @@ def remove_appointment(appointment_id):
     db.session.commit()
 
 
-def find_available_time_slots(user_ids, current_time):
+def find_available_time_slots(user_ids, current_time, number_time_slots):
     # retrieve all appointments for the given users
     participations = Participation.query.filter(
         Participation.userId.in_(user_ids)).all()
@@ -257,8 +269,9 @@ def find_available_time_slots(user_ids, current_time):
     if current_time.minute > 0 and current_time.minute <= 30:
         current_time = current_time.replace(minute=30)
     elif current_time.minute > 30:
-        current_time = current_time.replace(minute=0, hour=current_time.hour+1)
-    while len(available_slots) < 5:
+        current_time = current_time.replace(
+            minute=0, hour=current_time.hour+1)
+    while len(available_slots) < number_time_slots:
         # check if all users are available during the current time slot
         all_available = True
         for user_id in user_ids:
@@ -340,39 +353,43 @@ def get_times(debut, intervalle):
     return result
 
 
-def get_user(SelectedDate, other_user_id):
+def get_user_appointments(SelectedDate, other_user_id, current_user):
+    # Calculates the time 7 days ahead from the selected date
     time_start_plus_7 = SelectedDate + timedelta(days=7)
-    # get list of tuples of appointment IDs and user IDs of current user
-    appID_usID_current_user = [[row.appointmentId, row.userId] for row in Participation.query.filter(
-        Participation.userId == current_user.id).order_by(Participation.id).all()]
-    # get list of tuples of appointment IDs and user IDs of other user
-    appID_usID_other_user = [[row.appointmentId, row.userId] for row in Participation.query.filter(
-        Participation.userId == other_user_id).order_by(Participation.id).all()]
 
-    # keep only appointments that current user does not have
-    appID_usID_other_user = [x for x in appID_usID_other_user if x[0]
-                             not in [y[0] for y in appID_usID_current_user]]
-    # print list of appointments of other user not in current user's list
-    print("appID_usID_other_user "+str(appID_usID_other_user))
+    # Gets a list of tuples of appointment IDs and user IDs of the current user
+    # The appointments are selected by joining the `Appointment` and `Participation` tables
+    # The user IDs are filtered to match the `current_user.id`
+    # The time of the appointment is also filtered to be within the current time and 7 days from now
+    appID_usID_current_user = db.session.query(Appointment.id, Participation.userId)\
+        .join(Participation)\
+        .filter(Participation.userId == current_user, Appointment.time_start.between(SelectedDate, time_start_plus_7))\
+        .all()
 
-    # merge lists of appointments of current user and other user
-    appID_usID_current_user.extend(appID_usID_other_user)
-    appID_usID = appID_usID_current_user
-    # get appointment IDs from merged list of appointments
-    appointments_id = [inner_list[0] for inner_list in appID_usID]
+    # Gets a list of tuples of appointment IDs and user IDs of the other user
+    # The appointments are selected by joining the `Appointment` and `Participation` tables
+    # The user IDs are filtered to match the `other_user_id`
+    # The appointments that have the same ID as the appointments of the current user are excluded
+    appID_usID_other_user = db.session.query(Appointment.id, Participation.userId)\
+        .join(Participation)\
+        .filter(Participation.userId == other_user_id)\
+        .filter(Appointment.time_start.between(SelectedDate, time_start_plus_7))\
+        .filter(~Appointment.id.in_([x[0] for x in appID_usID_current_user]))\
+        .all()
 
-    # create dictionary mapping appointment ID to user ID
+    # Merges the two lists of appointments of the current and other users
+    appID_usID = appID_usID_current_user + appID_usID_other_user
+    # Creates a dictionary mapping appointment ID to user ID
     appID_usID_map = dict(appID_usID)
 
-    # get appointments in the next 7 days that are in the merged list
-    appointments = Appointment.query.filter(
-        Appointment.id.in_(appointments_id), Appointment.time_start >= SelectedDate, Appointment.time_end < time_start_plus_7).all()
-    # get participations for the appointments
-    participations = Participation.query.filter(Participation.appointmentId.in_(
-        appointments_id)).order_by(Participation.id).all()
+    # Gets a list of appointments with the same IDs as in the `appID_usID` list
+    # The appointments are filtered to be within the next 7 days from the selected date
+    appointments = Appointment.query\
+        .filter(Appointment.id.in_([x[0] for x in appID_usID]), Appointment.time_start >= SelectedDate, Appointment.time_end < time_start_plus_7)\
+        .all()
 
-    # return appointments, appointment IDs, and appointment ID to user ID mapping
-    return [appointments, appointments_id, appID_usID_map]
+    # Returns a list containing the appointments, a list of appointment IDs, and a dictionary mapping appointment ID to user ID
+    return [appointments, [x[0] for x in appID_usID], appID_usID_map]
 
 
 @login_manager.user_loader
@@ -484,11 +501,11 @@ def dashboard():
     times = get_times(datetime(2020, 1, 1, 00, 00, 00), 30)
 
     # Get the appointments and confirmations for the selected user and date
-    checkuser = get_user(current_app.SelectedDate,
-                         int(getattr(current_app, otherUserId)))
-    appointments = checkuser[0]
-    appointments_id = checkuser[1]
-    appID_usID_map = checkuser[2]
+    get_appointments = get_user_appointments(current_app.SelectedDate,
+                                             int(getattr(current_app, otherUserId)), current_user.id)
+    appointments = get_appointments[0]
+    appointments_id = get_appointments[1]
+    appID_usID_map = get_appointments[2]
     current_date = datetime.now()
 
     # Get the current time
@@ -507,15 +524,7 @@ def dashboard():
 # Login required before accessing this route
 @login_required
 def confirm(appId, confirm):
-    # Query the Participation table to get the relevant record
-    participation = Participation.query.filter(
-        Participation.appointmentId == appId, Participation.userId == current_user.id).first()
-
-    # Update the confirmation status of the appointment
-    participation.confirmed = int(confirm)
-
-    # Commit the changes to the database
-    db.session.commit()
+    confirm_function(appId, confirm, current_user.id)
 
     # Redirect to the dashboard after confirmation
     return redirect('/dashboard')
@@ -634,7 +643,7 @@ def select_slot():
     idArray = list(getattr(current_app, selected_users, {}).keys())
 
     # Get the available time slots of the selected users
-    time_slots = find_available_time_slots(idArray, cureentTime)
+    time_slots = find_available_time_slots(idArray, cureentTime, 5)
 
     # Print the time slots
     print(str(time_slots))

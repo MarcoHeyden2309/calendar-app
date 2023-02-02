@@ -55,32 +55,28 @@ with app.app_context():
         # Confirmation status of the participation
         confirmed = db.Column(db.Integer)
 
-    def signup_function(username, email, password):
+    def remove_appointment(appointment_id):
+        # Get all participation for the appointment
+        participations = Participation.query.filter_by(
+            appointmentId=appointment_id).all()
 
-        # Hash password using sha256
-        hashed_password = generate_password_hash(
-            password, method='sha256')
-        # Create new user with given username, email and password
-        new_user = User(username=username,
-                        email=email, password=hashed_password)
-        # Add the new user to database
-        db.session.add(new_user)
+        # Delete all participations for the appointment
+        for participation in participations:
+            db.session.delete(participation)
+
+        # Get the appointment with the given ID
+        appointment = Appointment.query.get(appointment_id)
+
+        # Delete the appointment
+        db.session.delete(appointment)
+
+        # Commit the changes to the database
         db.session.commit()
 
+    def remove_test(id):
+        appointments = db.session.query(Appointment).join(
+            Participation).filter(Participation.userId == id).all()
+        for app in appointments:
+            remove_appointment(str(app.id))
 
-# this function allows to automativally create users
-
-
-    def create_users(nb_users: int, password: str, name_root: str):
-        # nb_users: int, how many users you want to create
-        # password: the pass word (same for all users)
-        # name_root: the name root for each user, which will be unique for each user
-        # example: name_root = 'user' -> for each new user, the function will add a number at the end: 'user1'
-        i = 1
-        while i <= nb_users:
-            username = name_root+str(i)
-            email = name_root+str(i)+'@gmail.com'
-            signup_function(username, email, password)
-            i = i+1
-
-    create_users(100, 'password', 'user')
+    remove_test(2)

@@ -55,32 +55,21 @@ with app.app_context():
         # Confirmation status of the participation
         confirmed = db.Column(db.Integer)
 
-    def signup_function(username, email, password):
+    def confirm_function(appId, confirm, current_user):
+        # Query the Participation table to get the relevant record
+        participation = Participation.query.filter(
+            Participation.appointmentId == appId, Participation.userId == current_user).first()
 
-        # Hash password using sha256
-        hashed_password = generate_password_hash(
-            password, method='sha256')
-        # Create new user with given username, email and password
-        new_user = User(username=username,
-                        email=email, password=hashed_password)
-        # Add the new user to database
-        db.session.add(new_user)
+        # Update the confirmation status of the appointment
+        participation.confirmed = int(confirm)
+
+        # Commit the changes to the database
         db.session.commit()
 
+    def confirm_test(id):
+        appointments = db.session.query(Appointment).join(
+            Participation).filter(Participation.userId == id).all()
+        for app in appointments:
+            confirm_function(app.id, 2, 2)
 
-# this function allows to automativally create users
-
-
-    def create_users(nb_users: int, password: str, name_root: str):
-        # nb_users: int, how many users you want to create
-        # password: the pass word (same for all users)
-        # name_root: the name root for each user, which will be unique for each user
-        # example: name_root = 'user' -> for each new user, the function will add a number at the end: 'user1'
-        i = 1
-        while i <= nb_users:
-            username = name_root+str(i)
-            email = name_root+str(i)+'@gmail.com'
-            signup_function(username, email, password)
-            i = i+1
-
-    create_users(100, 'password', 'user')
+    confirm_test(2)
