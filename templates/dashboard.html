@@ -30,10 +30,8 @@
         <input type="text" name="username">
         <input type="submit" value="Search user to book an appointment" name="searchUser_button">
     </form>
-    <form method="POST" action="/dashboard">
-            <input type="hidden" name="username" value={{name}}>
-            <input type="submit" value="Make an appointment with myself" name="searchUser_button">
-    </form>
+    <button type="button" onclick="location.href='/matching'">Common slot Algorithm</button>
+
     
             {% if foundUsers != [] %}
             {% for user in foundUsers %}
@@ -42,7 +40,10 @@
             {% else %}
             <p>No user found</p>
             {% endif %}
-    <button type="button" onclick="location.href='/matching'">Common slot Algorithm</button>
+    <form method="POST" action="/dashboard">
+        <input type="hidden" name="username" value={{name}}>
+        <input type="submit" value="Make an appointment with myself" name="searchUser_button">
+    </form>
 
 
     <table>
@@ -82,63 +83,126 @@
             {% else %}
 
 
+
             {% for app in appointments %}
 
             {% if app.time_start.date() == day[1].date() and app.time_start.time() == time.time() %}
             {% set foundAppointment.found = True %}
                 {% if appID_usID_map[app.id] == userId %}
                 {% if confirmations[app.id][0] ==2 %}
-                <td style="background-color: rgba(0, 128, 0, 0.137);"><h4>{{ app.title}}</h4> <br>
+                <td style="background-color: rgb(0, 255, 0);"><h4>{{ app.title}}</h4> <br>
                     Date:{{ app.time_start.day }}/{{app.time_start.month}}/{{app.time_start.year}} <br>
                     Hour: {{app.time_start.time()}} - {{app.time_end.time()}} <br>
                     Number of invited participants: {{confirmations[app.id][1]}} <br>
-                    Number of confirmed participants: {{confirmations[app.id][2]}}
-                    <br><br>
-                    {% if userId == app.creatorId %}
-                    <button class="btn" onclick="window.location.href='/remove/{{app.id}}';">Delete Appointment</button>
+                    Number of confirmed participants: {{confirmations[app.id][2]}} <br>
+                    Appointment Creator: {{confirmations[app.id][4]}}
+                    <br>
+                    {% if confirmations[app.id][3]==0 %}
+                    <form method="POST" action="/dashboard">
+                        <input type="hidden" name="confirmApp" value="{{app.id}}">
+                        <input type="submit" value="Confirm Appointment" name="confirmApp_button">
+                    </form>
                     
+                    <form method="POST" action="/dashboard">
+                        <input type="hidden" name="declineApp" value="{{app.id}}">
+                        <input type="submit" value="Decline Appointment" name="declineApp_button">
+                    </form>
+                    {% elif confirmations[app.id][3]==1 %}
+                    <form method="POST" action="/dashboard">
+                        <input type="hidden" name="confirmApp" value="{{app.id}}">
+                        <input type="submit" value="Confirm Appointment" name="confirmApp_button">
+                    </form>
+                    {% elif confirmations[app.id][3]==2 %}
+                    <form method="POST" action="/dashboard">
+                        <input type="hidden" name="declineApp" value="{{app.id}}">
+                        <input type="submit" value="Decline Appointment" name="declineApp_button">
+                    </form>
+                    {% endif %}
+                    {% if userId == app.creatorId %}
+
+                    <form method="POST" action="/dashboard">
+                        <input type="hidden" name="remove_appointment" value="{{app.id}}">
+                        <input type="submit" value="Delete Appointment" name="rmApp_button">
+                    </form>
                     {% endif %}
                 </td>
 
                     {% set i.number = i.number+1 %}
                     
                 {% elif confirmations[app.id][0]==0 %}
-                 <td style="background-color:  rgba(255, 157, 0, 0.253);"><h4>{{ app.title}}</h4> <br>
+                 <td style="background-color:  rgb(255, 255, 0);"><h4>{{ app.title}}</h4> <br>
                     Date:{{ app.time_start.day }}/{{app.time_start.month}}/{{app.time_start.year}} <br>
                     Hour: {{app.time_start.time()}} - {{app.time_end.time()}} <br>
                     Number of invited participants: {{confirmations[app.id][1]}} <br>
-                    Number of confirmed participants: {{confirmations[app.id][2]}}
-                    <br><br>
-                    
-                    
-                        <button class="btn" onclick="window.location.href='/confirm/{{app.id}}/2';">Confirm</button>
-                   
-                    
-                        <button class="btn" onclick="window.location.href='/confirm/{{app.id}}/1';">Decline</button>
-                    
+                    Number of confirmed participants: {{confirmations[app.id][2]}} <br>
+                    Appointment Creator: {{confirmations[app.id][4]}}
+                    <br>
+                    {% if confirmations[app.id][3]==0 %}
+                        <form method="POST" action="/dashboard">
+                            <input type="hidden" name="confirmApp" value="{{app.id}}">
+                            <input type="submit" value="Confirm Appointment" name="confirmApp_button">
+                        </form>
+
+                        <form method="POST" action="/dashboard">
+                            <input type="hidden" name="declineApp" value="{{app.id}}">
+                            <input type="submit" value="Decline Appointment" name="declineApp_button">
+                        </form>
+                    {% elif confirmations[app.id][3]==1 %}
+                        <form method="POST" action="/dashboard">
+                            <input type="hidden" name="confirmApp" value="{{app.id}}">
+                            <input type="submit" value="Confirm Appointment" name="confirmApp_button">
+                        </form>
+                    {% elif confirmations[app.id][3]==2 %}
+                        <form method="POST" action="/dashboard">
+                            <input type="hidden" name="declineApp" value="{{app.id}}">
+                            <input type="submit" value="Decline Appointment" name="declineApp_button">
+                        </form>
+                    {% endif %}
                     {% if userId == app.creatorId %}
-                    <button class="btn" onclick="window.location.href='/remove/{{app.id}}';">Delete Appointment</button>
-                    
+                    <form method="POST" action="/dashboard">
+                        <input type="hidden" name="remove_appointment" value="{{app.id}}">
+                        <input type="submit" value="Delete Appointment" name="rmApp_button">
+                    </form>
                     {% endif %}
 
                     {% set i.number = i.number+1 %}
                 </td>
 
                 {% elif confirmations[app.id][0]==1 %}
-                <td style="background-color:  rgba(255, 0, 21, 0.253);"><h4>{{ app.title}}</h4> <br>
+                <td style="background-color: rgb(253, 0, 0);"><h4>{{ app.title}}</h4> <br>
                     Date:{{ app.time_start.day }}/{{app.time_start.month}}/{{app.time_start.year}} <br>
                     Hour: {{app.time_start.time()}} - {{app.time_end.time()}} <br>
                     Number of invited participants: {{confirmations[app.id][1]}} <br>
-                    Number of confirmed participants: {{confirmations[app.id][2]}}
-                    <br><br>
-                    {% if userId != app.creatorId %}
-                    <button class="btn" onclick="window.location.href='/confirm/{{app.id}}/2';">Confirm</button>
-                
+                    Number of confirmed participants: {{confirmations[app.id][2]}} <br>
+                    Appointment Creator: {{confirmations[app.id][4]}}
+                    <br>
+                    {% if confirmations[app.id][3]==0 %}
+                    <form method="POST" action="/dashboard">
+                        <input type="hidden" name="confirmApp" value="{{app.id}}">
+                        <input type="submit" value="Confirm Appointment" name="confirmApp_button">
+                    </form>
+                    
+                    <form method="POST" action="/dashboard">
+                        <input type="hidden" name="declineApp" value="{{app.id}}">
+                        <input type="submit" value="Decline Appointment" name="declineApp_button">
+                    </form>
+                    {% elif confirmations[app.id][3]==1 %}
+                    <form method="POST" action="/dashboard">
+                        <input type="hidden" name="confirmApp" value="{{app.id}}">
+                        <input type="submit" value="Confirm Appointment" name="confirmApp_button">
+                    </form>
+                    {% elif confirmations[app.id][3]==2 %}
+                    <form method="POST" action="/dashboard">
+                        <input type="hidden" name="declineApp" value="{{app.id}}">
+                        <input type="submit" value="Decline Appointment" name="declineApp_button">
+                    </form>
                     {% endif %}
 
                     {% if userId == app.creatorId %}
-                    <button class="btn" onclick="window.location.href='/remove/{{app.id}}';">Delete Appointment</button>
-                    
+                    <form method="POST" action="/dashboard">
+                        <input type="hidden" name="remove_appointment" value="{{app.id}}">
+                        <input type="submit" value="Delete Appointment" name="rmApp_button">
+                    </form>
                     {% endif %}
                     
                 
@@ -152,7 +216,8 @@
                             Date:{{ app.time_start.day }}/{{app.time_start.month}}/{{app.time_start.year}} <br>
                             Heure: {{app.time_start.time()}} - {{app.time_end.time()}} <br>
                             Number of invited participants: {{confirmations[app.id][1]}} <br>
-                            Number of confirmed participants: {{confirmations[app.id][2]}}
+                            Number of confirmed participants: {{confirmations[app.id][2]}} <br>
+                            Appointment Creator: {{confirmations[app.id][4]}}
                         
                         
                         

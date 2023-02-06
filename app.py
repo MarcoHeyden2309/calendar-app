@@ -128,15 +128,6 @@ class SearchForm(FlaskForm):
     # A SubmitField for submitting the form
     submit = SubmitField("Submit")
 
-# DateSelection
-# A form for selecting a start date
-
-
-class DateSelection(FlaskForm):
-    # A DateField for selecting the start date, with InputRequired() validation
-    start_date = DateField('Start Date', validators=[InputRequired()])
-    # A SubmitField for submitting the form
-    submit = SubmitField("Submit")
 
 # AppointmentTitle
 # A form for setting the title of an appointment
@@ -174,9 +165,9 @@ def confirm_function(appId, confirm, current_user):
 def new_appointment(slot, title, current_user, idArray):
 
     # Create a new appointment object with the selected slot and title
-    slot_str = slot.strftime("%Y-%m-%d %H:%M:%S")
+    
     time_end = (datetime.strptime(
-        slot_str, "%Y-%m-%d %H:%M:%S") + timedelta(minutes=30))
+        slot, "%Y-%m-%d %H:%M:%S") + timedelta(minutes=30))
     new_appointment = Appointment(
         time_start=slot, time_end=time_end, title=title, creatorId=current_user)
 
@@ -201,6 +192,8 @@ def new_appointment(slot, title, current_user, idArray):
 
         # Add the participation to the database
         db.session.add(new_participation2)
+        if idArray[0]==idArray[1]:
+            break
 
         # Commit the changes to the database
     db.session.commit()
@@ -298,35 +291,41 @@ def find_available_time_slots(user_ids, current_time, number_time_slots):
     return available_slots
 
 
-def check_confirmation(appoId):
+def check_confirmation(appointmentId, current_user):
     # A dictionary to store the result of the function
     result = {}
 
-    # Iterate over each appointment in the appoId argument
-    for appointment in appoId:
+    # Iterate over each appointment in the appointmentId argument
+    for id in appointmentId:
         # Get a list of all participations for the current appointment
         participations_number = Participation.query.filter(
-            Participation.appointmentId == appointment).all()
+            Participation.appointmentId == id).all()
         # Get a list of all accepted participations for the current appointment
         participations_accepted = Participation.query.filter(
-            Participation.appointmentId == appointment, Participation.confirmed == 2).all()
+            Participation.appointmentId == id, Participation.confirmed == 2).all()
         # Get a list of all declined participations for the current appointment
         participations_declined = Participation.query.filter(
-            Participation.appointmentId == appointment, Participation.confirmed == 1).all()
+            Participation.appointmentId == id, Participation.confirmed == 1).all()
+        #Get the participation status of the current user
+        participation_currentuser = Participation.query.filter(
+            Participation.appointmentId == id, Participation.userId == current_user).first()
+        #get the name of the appointment creator
+        appointment = Appointment.query.filter(id == id).first()
+        creator_name = User.query.filter(User.id == appointment.creatorId).first()
         # Check if all participations are accepted
         if len(participations_accepted) == len(participations_number):
             # Add the appointment to the result dictionary with status 2 (all accepted)
             result.update(
-                {appointment: [2, len(participations_number), len(participations_accepted)]})
+                {id: [2, len(participations_number), len(participations_accepted), participation_currentuser.confirmed, creator_name.username]})
         # Check if all participations but one are declined
         elif len(participations_declined) == (len(participations_number)-1):
             # Add the appointment to the result dictionary with status 1 (all declined)
             result.update(
-                {appointment: [1, len(participations_number), len(participations_accepted)]})
+                {id: [1, len(participations_number), len(participations_accepted), participation_currentuser.confirmed, creator_name.username]})
         # If neither condition is met, add the appointment to the result dictionary with status 0 (not confirmed)
         else:
             result.update(
-                {appointment: [0, len(participations_number), len(participations_accepted)]})
+                {id: [0, len(participations_number), len(participations_accepted), participation_currentuser.confirmed, creator_name.username]})
 
     # Return the result dictionary
     return result
@@ -402,35 +401,20 @@ def load_user(user_id):
 @app.route('/', methods=['GET', 'POST'])
 @login_required
 def index():
-    if current_user.is_authenticated:
-        name = current_user.username
-    else:
-        name = None
-    form = SearchForm()
-    foundUsers = []
-    noUser = False
-    currentuserId = current_user.id
-    if form.validate_on_submit():
-        foundUsers = User.query.filter_by(username=form.InputString.data).all()
-        if len(foundUsers) == 0:
-            noUser = True
-        else:
-            noUser = False
-
-    return render_template('index.html', form=form, foundUsers=foundUsers, noUser=noUser, currentuserId=currentuserId, name=name)
+    return redirect('/dashboard')
 
 
 # Route definition for creating a new appointment
 # Supports GET and POST requests
-@app.route('/appointment/<date>/<time>/<id>', methods=['GET', 'POST'])
+@app.route('/appointment/<date>/<time>/<other_user_id>', methods=['GET', 'POST'])
 # Login is required to access this page
 @login_required
-def make_appointment(date, time, id):
+def make_appointment(date, time, other_user_id):
     # Initialize the AppointmentTitle form
     titleForm = AppointmentTitle()
     # Convert the date string to a datetime object
     date_obj = datetime.strptime(date + " " + time, "%Y-%m-%d %H:%M:%S")
-
+    date_obj = date_obj.strftime("%Y-%m-%d %H:%M:%S")
     # Get the name of the current user
     if current_user.is_authenticated:
         name = current_user.username
@@ -439,38 +423,37 @@ def make_appointment(date, time, id):
 
     # If the appointment title form has been submitted and is valid
     if titleForm.validate_on_submit():
-        userArray = [current_user.id, id]
+        userArray = [current_user.id, int(other_user_id)]
         new_appointment(date_obj, titleForm.title.data,
                         current_user.id, userArray)
-
+        print(str(userArray))
         # Redirect to the dashboard
         return redirect('/dashboard')
 
     # Render the confirmation page, passing in necessary information
-    return render_template('confirmation.html', titleForm=titleForm, date=date, time=time, id=id, name=name)
+    return render_template('confirmation.html', titleForm=titleForm, date=date, time=time, id=other_user_id, name=name)
 
 
 # Route for the dashboard view of a logged in user
 @app.route('/dashboard', methods=['GET', 'POST'])
 @login_required  # Ensures the user must be logged in to access this view
 def dashboard():
+
     # Identifying the id of the other user to display appointments with
     otherUserId = 'otherUserId_' + str(current_user.id)
 
     # Store the id of the other user in the current app context
     setattr(current_app, otherUserId, current_user.id)
 
-    # If the selected date is not yet stored in the current app context, set it to today's date
-    if not hasattr(current_app, 'SelectedDate'):
-        current_app.SelectedDate = datetime.today()
+
 
     # Initialize the date selection form
-    dateform = DateSelection()
+    
     # Initialize the appointment confirmation form
     confirm_appoinment = AppointmentConfirmation()
 
     # List to store found users matching the search criteria
-    foundUsers = []
+    foundUsers = [current_user]
 
     # Check if the user is authenticated and get their username
     if current_user.is_authenticated:
@@ -478,7 +461,12 @@ def dashboard():
     else:
         name = None
 
+     # If the selected date is not yet stored in the current app context, set it to today's date
+    selected_date = 'selected_date_'+name
+    if not hasattr(current_app, selected_date):
+        setattr(current_app, selected_date, datetime.now())
     # Check the request method and process the form data accordingly
+
     if request.method == 'POST':
         if request.form.get('searchUser_button'):
             # Search for the user with the entered username
@@ -492,16 +480,34 @@ def dashboard():
             # Store the selected date in the current app context
             date_string = request.form['date']
             date_object = datetime.strptime(date_string, '%Y-%m-%d')
-            current_app.SelectedDate = date_object.replace(hour=00, minute=00)
+            
+            setattr(current_app, selected_date, date_object.replace(hour=00, minute=00))
+        elif request.form.get('declineApp_button'):
+            appointment_id = request.form['declineApp']
+            confirm_function(appointment_id, 1, current_user.id)
+            print('decline '+appointment_id)
+            print('ok')
+
+        elif request.form.get('confirmApp_button'):
+            appointment_id = request.form['confirmApp']
+            confirm_function(appointment_id, 2, current_user.id)
+            print('accept '+appointment_id)
+            print('ok')
+
+        elif request.form.get('rmApp_button'):
+            appointment_id = request.form['remove_appointment']
+            remove_appointment(appointment_id)
+            print('remove '+appointment_id)
+            print('ok')       
 
     # Get the days of the week for the selected date
-    weekdays = getWeekdays(current_app.SelectedDate)
-
+    weekdays = getWeekdays(getattr(current_app, selected_date))
+    
     # Get the list of times with a 30 minute interval
     times = get_times(datetime(2020, 1, 1, 00, 00, 00), 30)
 
     # Get the appointments and confirmations for the selected user and date
-    get_appointments = get_user_appointments(current_app.SelectedDate,
+    get_appointments = get_user_appointments(getattr(current_app, selected_date),
                                              int(getattr(current_app, otherUserId)), current_user.id)
     appointments = get_appointments[0]
     appointments_id = get_appointments[1]
@@ -512,36 +518,12 @@ def dashboard():
     current_time = datetime.now().time()
 
     # Get the confirmation status for the appointments
-    confirmations = check_confirmation(appointments_id)
-
+    confirmations = check_confirmation(appointments_id, current_user.id)
+    print('confirmations '+str(confirmations))
     # Return the rendered dashboard template with the required variables
-    return render_template('dashboard.html', appointments=appointments, confirmations=confirmations, dateform=dateform, userId=current_user.id, weekdays=weekdays, times=times, confirm_appoinment=confirm_appoinment, name=name, appID_usID_map=appID_usID_map, current_date=current_date, current_time=current_time, otherUserId=getattr(current_app, otherUserId), foundUsers=foundUsers, SelectedDate=current_app.SelectedDate)
+    return render_template('dashboard.html', appointments=appointments, confirmations=confirmations, userId=current_user.id, weekdays=weekdays, times=times, confirm_appoinment=confirm_appoinment, name=name, appID_usID_map=appID_usID_map, current_date=current_date, current_time=current_time, otherUserId=getattr(current_app, otherUserId), foundUsers=foundUsers, SelectedDate=getattr(current_app, selected_date))
 
 
-# Route for handling appointment confirmation
-# Only allows GET request
-@app.route('/confirm/<appId>/<confirm>', methods=['GET'])
-# Login required before accessing this route
-@login_required
-def confirm(appId, confirm):
-    confirm_function(appId, confirm, current_user.id)
-
-    # Redirect to the dashboard after confirmation
-    return redirect('/dashboard')
-
-# This function is called when the '/remove/<appId>' endpoint is hit with a GET request.
-# It requires the user to be logged in before it can be accessed, as it uses the current_user object from Flask-Login.
-
-
-@app.route('/remove/<appId>', methods=['GET'])
-@login_required
-def remove_app(appId):
-    # Prints the id of the appointment to be removed
-    print("Removing appointment id: " + str(appId))
-    # Calls the remove_appointment function, passing the id of the appointment to be removed
-    remove_appointment(int(appId))
-    # Redirects the user to the dashboard page
-    return redirect('/dashboard')
 
 
 # This function is called when the '/matching' endpoint is hit with a GET or POST request.
@@ -555,9 +537,6 @@ def match():
         name = current_user.username
     else:
         name = None
-
-    # Creates a new instance of the SearchForm object.
-    form = SearchForm()
 
     # Initializes an empty list 'foundUsers' to store the results of the user search.
     foundUsers = []
@@ -574,6 +553,7 @@ def match():
     if not hasattr(current_app, selected_users):
         setattr(current_app, selected_users, {
                 current_user.id: current_user.username})
+
 
     # If the request method is POST, checks which form button was pressed and takes appropriate action.
     if request.method == 'POST':
@@ -603,9 +583,16 @@ def match():
             # If no user is found, set the 'noUserFound' flag to False
             else:
                 noUserFound = False
+        
+        elif request.form.get('remove_all_selected_users_button'):
+            if hasattr(current_app, selected_users):
+                delattr(current_app, selected_users)
+            if not hasattr(current_app, selected_users):
+                setattr(current_app, selected_users, {
+                current_user.id: current_user.username})
 
     # Render the 'matching_algorithm.html' template, passing in the form, user information, and selected users dictionary
-    return render_template('matching_algorithm.html', form=form, sameUser=sameUser, foundUsers=foundUsers, sameSelectedUser=sameSelectedUser, selectedUsers=getattr(current_app, selected_users, {}), name=name, noUserFound=noUserFound)
+    return render_template('matching_algorithm.html', sameUser=sameUser, foundUsers=foundUsers, sameSelectedUser=sameSelectedUser, selectedUsers=getattr(current_app, selected_users, {}), name=name, noUserFound=noUserFound)
 
 
 # Define the route for adding selected users
@@ -634,38 +621,51 @@ def select_slot():
         name = None
 
     # Get the current time
-    cureentTime = datetime.now()
+    
 
     # Create a key for the selected users of the current user
     selected_users = 'selected_users_'+current_user.username
 
     # Get the list of keys of the selected users of the current user
     idArray = list(getattr(current_app, selected_users, {}).keys())
-
-    # Get the available time slots of the selected users
-    time_slots = find_available_time_slots(idArray, cureentTime, 5)
-
-    # Print the time slots
-    print(str(time_slots))
+    selected_date_time = datetime.now()
+    time_slots=find_available_time_slots(idArray, selected_date_time, 5)
 
     # If a POST request is made
     if request.method == 'POST':
+        if request.form.get('select_date'):
+            selected_date_time = datetime.strptime(request.form['datetime'], "%Y-%m-%dT%H:%M")
+            print('test: '+str(selected_date_time))
+            # Get the available time slots of the selected users
+            time_slots = find_available_time_slots(idArray, selected_date_time, 5)
+
         # Get the title of the appointment
-        title = request.form['title']
+        elif request.form.get('slot_button'):
+            title = request.form['title']
 
-        # Get the selected slot for the appointment
-        slot = request.form['slot']
+            # Get the selected slot for the appointment
+            slot = request.form['slot']
 
-        new_appointment(slot, title, current_user.id, idArray)
+            new_appointment(slot, title, current_user.id, idArray)
 
-        # Print the type of the slot
-        print("slot-title "+str(type(slot)))
+            # Print the type of the slot
+            print("slot-title "+str(type(slot)))
 
-        # Display a flash message to indicate that the appointment has been created
-        flash("You have successfully created an appointment")
+            # Display a flash message to indicate that the appointment has been created
+            flash("You have successfully created an appointment")
+
+            #remove the selected users
+            
+            if hasattr(current_app, selected_users):
+                delattr(current_app, selected_users)
+            
+            if not hasattr(current_app, selected_users):
+                setattr(current_app, selected_users, {
+                current_user.id: current_user.username})
 
         # Redirect to the dashboard
-        return redirect('/dashboard')
+
+            return redirect('/dashboard')
 
     # Render the select_common_slot.html template with the found time slots and the name of the current user
     return render_template('select_common_slot.html', foundSlots=time_slots, name=name)

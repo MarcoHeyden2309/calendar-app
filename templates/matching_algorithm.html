@@ -42,15 +42,21 @@
         </li>
         {% endfor %}
     </ul>
+        <form method="POST" action="/matching" >
+            <input type="hidden" name="rmAllUser">
+            <input type="submit" value="Remove all selected Users" name="remove_all_selected_users_button" style="background-color: rgb(253, 0, 0);">
+        </form>
+        <br>
 
     {% if selectedUsers|length > 1 %}
-        <button type="button" onclick="location.href='/matching/asked'">
-            find common timeslots
-        </button>
+    <form action="/matching/asked" method="POST">
+        <label for="datetime">Choose a date and time:</label>
+        <input type="datetime-local" id="datetime" name="datetime" required>
+        <input type="submit" value="Find common timeslots" name="select_date" style="background-color: rgb(7, 214, 94);">
+    </form>
+
     {% else %}
-        <button type="button" disabled onclick="location.href='/matching/asked'">
-            find common timeslots
-        </button>
+
         <h3>Select at least another user</h3>
     {% endif %}
 
