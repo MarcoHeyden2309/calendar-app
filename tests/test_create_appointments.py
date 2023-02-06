@@ -12,12 +12,12 @@ from flask_mysqldb import MySQL
 from mysql.connector import connect
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
+from test_config import Config
 
 app = Flask(__name__)
 with app.app_context():
     # Configure the secret key and database URI for the Flask application
-    app.config['SECRET_KEY'] = 'secret'
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://marco:@localhost/calendardb'
+    app.config.from_object(Config)
     db = SQLAlchemy(app)
 
     class User(UserMixin, db.Model):
@@ -153,7 +153,7 @@ with app.app_context():
 # this is the test code
 
     # I select the users with id's that range from 1 to 100
-    userid = list(range(1, 101))
+    userid = list(range(77, 101))
     # I select the date and time to noew
     curentTime = datetime.now()
     # I call the find_available_time_slots() function, and ask it to find the next 2880 available slots

@@ -12,12 +12,12 @@ from flask_mysqldb import MySQL
 from mysql.connector import connect
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
+from test_config import Config
 
 app = Flask(__name__)
 with app.app_context():
     # Configure the secret key and database URI for the Flask application
-    app.config['SECRET_KEY'] = 'secret'
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://marco:@localhost/calendardb'
+    app.config.from_object(Config)
     db = SQLAlchemy(app)
 
     class User(UserMixin, db.Model):
