@@ -500,7 +500,8 @@ def dashboard():
     otherUserId = 'otherUserId_' + str(current_user.id)
 
     # Store the id of the other user in the current app context
-    setattr(current_app, otherUserId, current_user.id)
+    if not hasattr(current_app, otherUserId):
+        setattr(current_app, otherUserId, current_user.id)
 
     # Initialize the date selection form
 
