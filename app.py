@@ -337,7 +337,15 @@ def check_confirmation(appointmentId, current_user):
             Participation.appointmentId == id, Participation.confirmed == 1).all()
         # Get the participation status of the current user
         participation_currentuser = Participation.query.filter(
-            Participation.appointmentId == id, Participation.userId == current_user).first()
+            Participation.appointmentId == id, Participation.userId == current_user).all()
+        if participation_currentuser == []:
+            participation_currentuser_confirmed = 3
+
+            # do something with participation_currentuser
+        else:
+            participation_currentuser_confirmed = participation_currentuser[0].confirmed
+
+    # do something if the query returned no results
         # get the name of the appointment creator
         appointment = Appointment.query.filter(id == id).first()
         creator_name = User.query.filter(
@@ -346,16 +354,16 @@ def check_confirmation(appointmentId, current_user):
         if len(participations_accepted) == len(participations_number):
             # Add the appointment to the result dictionary with status 2 (all accepted)
             result.update(
-                {id: [2, len(participations_number), len(participations_accepted), participation_currentuser.confirmed, creator_name.username]})
+                {id: [2, len(participations_number), len(participations_accepted), participation_currentuser_confirmed, creator_name.username]})
         # Check if all participations but one are declined
         elif len(participations_declined) == (len(participations_number)-1):
             # Add the appointment to the result dictionary with status 1 (all declined)
             result.update(
-                {id: [1, len(participations_number), len(participations_accepted), participation_currentuser.confirmed, creator_name.username]})
+                {id: [1, len(participations_number), len(participations_accepted), participation_currentuser_confirmed, creator_name.username]})
         # If neither condition is met, add the appointment to the result dictionary with status 0 (not confirmed)
         else:
             result.update(
-                {id: [0, len(participations_number), len(participations_accepted), participation_currentuser.confirmed, creator_name.username]})
+                {id: [0, len(participations_number), len(participations_accepted), participation_currentuser_confirmed, creator_name.username]})
 
     # Return the result dictionary
     return result
@@ -404,11 +412,11 @@ def get_user_appointments(SelectedDate, other_user_id, current_user):
     # The appointments are selected by joining the `Appointment` and `Participation` tables
     # The user IDs are filtered to match the `current_user.id`
     # The time of the appointment is also filtered to be within the current time and 7 days from now
-    appID_usID_current_user = db.session.query(Appointment.id, Participation.userId)\
+    appID_usID_current_user = db.session.query(Appointment.time_start, Appointment.id, Participation.userId)\
         .join(Participation)\
         .filter(Participation.userId == current_user, Appointment.time_start.between(SelectedDate, time_start_plus_7))\
         .all()
-
+    print(str(appID_usID_current_user))
     # Gets a list of tuples of appointment IDs and user IDs of the other user
     # The appointments are selected by joining the `Appointment` and `Participation` tables
     # The user IDs are filtered to match the `other_user_id`
@@ -418,10 +426,13 @@ def get_user_appointments(SelectedDate, other_user_id, current_user):
         .filter(Participation.userId == other_user_id)\
         .filter(Appointment.time_start.between(SelectedDate, time_start_plus_7))\
         .filter(~Appointment.id.in_([x[0] for x in appID_usID_current_user]))\
+        .filter(~Appointment.time_start.in_([x[0] for x in appID_usID_current_user]))\
         .all()
 
     # Merges the two lists of appointments of the current and other users
-    appID_usID = appID_usID_current_user + appID_usID_other_user
+    appID_usID = [element[-2:]
+                  for element in appID_usID_current_user] + appID_usID_other_user
+    print(str(appID_usID_current_user))
     # Creates a dictionary mapping appointment ID to user ID
     appID_usID_map = dict(appID_usID)
 
@@ -564,7 +575,7 @@ def dashboard():
 
     # Get the confirmation status for the appointments
     confirmations = check_confirmation(appointments_id, current_user.id)
-    print('confirmations '+str(confirmations))
+    print('confirmations ' + str(appID_usID_map))
     # Return the rendered dashboard template with the required variables
     return render_template('dashboard.html', appointments=appointments, confirmations=confirmations, userId=current_user.id, weekdays=weekdays, times=times, confirm_appoinment=confirm_appoinment, name=name, appID_usID_map=appID_usID_map, current_date=current_date, current_time=current_time, otherUserId=getattr(current_app, otherUserId), foundUsers=foundUsers, SelectedDate=getattr(current_app, selected_date))
 
